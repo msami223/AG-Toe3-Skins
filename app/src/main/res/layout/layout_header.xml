@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:background="#1E1E1E"
+    android:padding="12dp"
+    android:gravity="center_vertical"
+    android:elevation="8dp">
+
+    <!-- BACK BUTTON -->
+    <ImageView
+        android:id="@+id/btnHeaderBack"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:src="@android:drawable/ic_menu_revert"
+        app:tint="#FFFFFF"
+        android:layout_marginEnd="12dp"
+        android:visibility="gone"
+        android:contentDescription="Back" />
+
+    <!-- SEARCH BAR -->
+    <FrameLayout
+        android:layout_width="0dp"
+        android:layout_height="45dp"
+        android:layout_weight="1"
+        android:background="@drawable/bg_search_rounded">
+
+        <EditText
+            android:id="@+id/etHeaderSearch"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@android:color/transparent"
+            android:hint="Search skins..."
+            android:textColorHint="#888888"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:inputType="text"
+            android:maxLines="1"
+            android:imeOptions="actionSearch"/>
+    </FrameLayout>
+
+    <!-- SORT BUTTON -->
+    <ImageView
+        android:id="@+id/btnHeaderSort"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginStart="10dp"
+        android:padding="8dp"
+        android:background="@drawable/bg_search_rounded"
+        android:src="@android:drawable/ic_menu_sort_by_size"
+        app:tint="#BB86FC"
+        android:contentDescription="Sort" />
+
+</LinearLayout>
