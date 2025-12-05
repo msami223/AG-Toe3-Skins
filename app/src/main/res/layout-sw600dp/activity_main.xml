@@ -12,7 +12,7 @@
         android:id="@+id/headerLayout"
         layout="@layout/layout_header" />
 
-    <!-- NOTIFICATION PERMISSION BANNER (Added Here) -->
+    <!-- NOTIFICATION PERMISSION BANNER -->
     <include
         android:id="@+id/bannerNotification"
         layout="@layout/layout_notification_banner" />
@@ -23,10 +23,10 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
-        android:paddingTop="12dp"
-        android:paddingBottom="8dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="12dp"
         android:clipToPadding="false"
         android:scrollbars="none" />
 
@@ -41,18 +41,18 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent">
 
-            <!-- THE REAL DATA LIST (Initially hidden) -->
+            <!-- THE REAL DATA LIST - 5 COLUMNS FOR TABLETS -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvSkins"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
-                android:padding="8dp"
+                android:padding="12dp"
                 android:clipToPadding="false"
                 android:visibility="gone"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintBottom_toBottomOf="parent"/>
 
-            <!-- THE SHIMMER PLACEHOLDER -->
+            <!-- THE SHIMMER PLACEHOLDER - 5 COLUMNS -->
             <com.facebook.shimmer.ShimmerFrameLayout
                 android:id="@+id/shimmerViewContainer"
                 android:layout_width="match_parent"
@@ -60,15 +60,22 @@
                 android:orientation="vertical"
                 app:shimmer_auto_start="true">
 
-                <!-- This grid contains the dummy cards -->
+                <!-- 5 column grid for tablets -->
                 <GridLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:columnCount="2"
+                    android:columnCount="5"
                     android:orientation="horizontal"
                     android:useDefaultMargins="true"
-                    android:padding="8dp">
+                    android:padding="12dp">
 
+                    <include layout="@layout/item_skin_placeholder" />
+                    <include layout="@layout/item_skin_placeholder" />
+                    <include layout="@layout/item_skin_placeholder" />
+                    <include layout="@layout/item_skin_placeholder" />
+                    <include layout="@layout/item_skin_placeholder" />
+                    <include layout="@layout/item_skin_placeholder" />
+                    <include layout="@layout/item_skin_placeholder" />
                     <include layout="@layout/item_skin_placeholder" />
                     <include layout="@layout/item_skin_placeholder" />
                     <include layout="@layout/item_skin_placeholder" />
@@ -78,7 +85,6 @@
                     <include layout="@layout/item_skin_placeholder" />
                     <include layout="@layout/item_skin_placeholder" />
                 </GridLayout>
-
             </com.facebook.shimmer.ShimmerFrameLayout>
 
             <!-- Error Message -->
@@ -91,8 +97,7 @@
                 android:visibility="gone"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintBottom_toBottomOf="parent"/>
+
         </androidx.constraintlayout.widget.ConstraintLayout>
-
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
-
 </LinearLayout>

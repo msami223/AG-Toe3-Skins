@@ -1,13 +1,17 @@
 package com.devstormtech.toe3skins
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
+import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
@@ -37,7 +41,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var shimmerContainer: ShimmerFrameLayout
     private lateinit var recyclerView: RecyclerView
     private lateinit var rvTruckFilters: RecyclerView
-    private lateinit var tvError: TextView
+    private lateinit var errorLayout: View
+    private lateinit var tvErrorTitle: TextView
+    private lateinit var tvErrorMessage: TextView
+    private lateinit var btnRetry: Button
     private lateinit var etSearch: EditText
     private lateinit var btnSort: ImageView
     private lateinit var btnBack: ImageView
@@ -63,7 +70,16 @@ class MainActivity : AppCompatActivity() {
         shimmerContainer = findViewById(R.id.shimmerViewContainer)
         recyclerView = findViewById(R.id.rvSkins)
         rvTruckFilters = findViewById(R.id.rvTruckFilters)
-        tvError = findViewById(R.id.tvError)
+        errorLayout = findViewById(R.id.errorLayout)
+        tvErrorTitle = errorLayout.findViewById(R.id.tvErrorTitle)
+        tvErrorMessage = errorLayout.findViewById(R.id.tvErrorMessage)
+        btnRetry = errorLayout.findViewById(R.id.btnRetry)
+
+        // Setup retry button
+        btnRetry.setOnClickListener {
+            fetchSkins(null, false)
+        }
+
         etSearch = findViewById(R.id.etHeaderSearch)
         btnSort = findViewById(R.id.btnHeaderSort)
         btnBack = findViewById(R.id.btnHeaderBack)
@@ -87,7 +103,9 @@ class MainActivity : AppCompatActivity() {
         setupTruckFilters(currentFilterTruck)
 
         // 5. Skins Grid
-        recyclerView.layoutManager = GridLayoutManager(this, 2)
+        // Dynamic columns: 2 for phones, 5 for tablets
+        val spanCount = resources.getInteger(R.integer.grid_columns)
+        recyclerView.layoutManager = GridLayoutManager(this, spanCount)
         adapter = SkinsAdapter(emptyList()) { skin ->
             val intent = Intent(this, DetailActivity::class.java)
             intent.putExtra("SKIN_DATA", skin)
@@ -243,7 +261,7 @@ class MainActivity : AppCompatActivity() {
             shimmerContainer.visibility = View.VISIBLE
         }
         recyclerView.visibility = View.GONE
-        tvError.visibility = View.GONE
+        errorLayout.visibility = View.GONE
 
         RetrofitClient.instance.getSkins().enqueue(object : Callback<List<Skin>> {
             override fun onResponse(call: Call<List<Skin>>, response: Response<List<Skin>>) {
@@ -319,7 +337,7 @@ class MainActivity : AppCompatActivity() {
         if (filteredList.isEmpty()) {
             showError("We are working hard on adding new skins! Check back soon.")
         } else {
-            tvError.visibility = View.GONE
+            errorLayout.visibility = View.GONE
             recyclerView.visibility = View.VISIBLE
         }
     }
@@ -346,9 +364,44 @@ class MainActivity : AppCompatActivity() {
         applyFilters()
     }
 
+    private fun isInternetAvailable(): Boolean {
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val network = connectivityManager.activeNetwork ?: return false
+            val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
+            return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        } else {
+            @Suppress("DEPRECATION")
+            val networkInfo = connectivityManager.activeNetworkInfo
+            @Suppress("DEPRECATION")
+            return networkInfo != null && networkInfo.isConnected
+        }
+    }
+
     private fun showError(message: String) {
-        tvError.text = message
-        tvError.visibility = View.VISIBLE
+        // Hide other views
         recyclerView.visibility = View.GONE
+        shimmerContainer.visibility = View.GONE
+        errorLayout.visibility = View.VISIBLE
+
+        // Detect error type and show appropriate message
+        when {
+            !isInternetAvailable() -> {
+                tvErrorTitle.text = "No Internet Connection"
+                tvErrorMessage.text = "Please check your connection and try again"
+            }
+            message.contains("Server Error") -> {
+                tvErrorTitle.text = "Server Error"
+                tvErrorMessage.text = "Our servers are having issues. Please try again later"
+            }
+            message.contains("Network Error") -> {
+                tvErrorTitle.text = "Connection Failed"
+                tvErrorMessage.text = "Unable to reach the server. Please check your internet"
+            }
+            else -> {
+                tvErrorTitle.text = "Something Went Wrong"
+                tvErrorMessage.text = message
+            }
+        }
     }
 }
