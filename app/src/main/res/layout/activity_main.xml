@@ -1,98 +1,116 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:background="#121212"
     android:fitsSystemWindows="true">
 
-    <!-- UNIVERSAL HEADER -->
-    <include
-        android:id="@+id/headerLayout"
-        layout="@layout/layout_header" />
-
-    <!-- NOTIFICATION PERMISSION BANNER (Added Here) -->
-    <include
-        android:id="@+id/bannerNotification"
-        layout="@layout/layout_notification_banner" />
-
-    <!-- TRUCK FILTER LIST -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rvTruckFilters"
+    <!-- Main Content -->
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
-        android:paddingTop="12dp"
-        android:paddingBottom="8dp"
-        android:clipToPadding="false"
-        android:scrollbars="none" />
+        android:layout_height="match_parent"
+        android:orientation="vertical">
 
-    <!-- PULL TO REFRESH WRAPPER -->
-    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-        android:id="@+id/swipeRefresh"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        <!-- UNIVERSAL HEADER -->
+        <include
+            android:id="@+id/headerLayout"
+            layout="@layout/layout_header" />
 
-        <!-- CONTENT -->
-        <androidx.constraintlayout.widget.ConstraintLayout
+        <!-- NOTIFICATION PERMISSION BANNER -->
+        <include
+            android:id="@+id/bannerNotification"
+            layout="@layout/layout_notification_banner" />
+
+        <!-- TRUCK FILTER LIST -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvTruckFilters"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="8dp"
+            android:clipToPadding="false"
+            android:scrollbars="none" />
+
+        <!-- PULL TO REFRESH WRAPPER -->
+        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+            android:id="@+id/swipeRefresh"
             android:layout_width="match_parent"
             android:layout_height="match_parent">
 
-            <!-- THE REAL DATA LIST (Initially hidden) -->
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/rvSkins"
+            <!-- CONTENT -->
+            <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:padding="8dp"
-                android:clipToPadding="false"
-                android:visibility="gone"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintBottom_toBottomOf="parent"/>
+                android:layout_height="match_parent">
 
-            <!-- THE SHIMMER PLACEHOLDER -->
-            <com.facebook.shimmer.ShimmerFrameLayout
-                android:id="@+id/shimmerViewContainer"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:orientation="vertical"
-                app:shimmer_auto_start="true">
-
-                <!-- This grid contains the dummy cards -->
-                <GridLayout
+                <!-- THE REAL DATA LIST -->
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvSkins"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:columnCount="2"
-                    android:orientation="horizontal"
-                    android:useDefaultMargins="true"
-                    android:padding="8dp">
+                    android:layout_height="0dp"
+                    android:padding="8dp"
+                    android:clipToPadding="false"
+                    android:visibility="gone"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent"/>
 
-                    <include layout="@layout/item_skin_placeholder" />
-                    <include layout="@layout/item_skin_placeholder" />
-                    <include layout="@layout/item_skin_placeholder" />
-                    <include layout="@layout/item_skin_placeholder" />
-                    <include layout="@layout/item_skin_placeholder" />
-                    <include layout="@layout/item_skin_placeholder" />
-                    <include layout="@layout/item_skin_placeholder" />
-                    <include layout="@layout/item_skin_placeholder" />
-                </GridLayout>
+                <!-- THE SHIMMER PLACEHOLDER -->
+                <com.facebook.shimmer.ShimmerFrameLayout
+                    android:id="@+id/shimmerViewContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    app:shimmer_auto_start="true">
 
-            </com.facebook.shimmer.ShimmerFrameLayout>
+                    <GridLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:columnCount="2"
+                        android:orientation="horizontal"
+                        android:useDefaultMargins="true"
+                        android:padding="8dp">
 
-            <!-- Error Message -->
-            <!-- Error State -->
-            <include
-                android:id="@+id/errorLayout"
-                layout="@layout/layout_error_state"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:visibility="gone"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintBottom_toBottomOf="parent"/>
-        </androidx.constraintlayout.widget.ConstraintLayout>
+                        <include layout="@layout/item_skin_placeholder" />
+                        <include layout="@layout/item_skin_placeholder" />
+                        <include layout="@layout/item_skin_placeholder" />
+                        <include layout="@layout/item_skin_placeholder" />
+                        <include layout="@layout/item_skin_placeholder" />
+                        <include layout="@layout/item_skin_placeholder" />
+                        <include layout="@layout/item_skin_placeholder" />
+                        <include layout="@layout/item_skin_placeholder" />
+                    </GridLayout>
 
-    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+                </com.facebook.shimmer.ShimmerFrameLayout>
 
-</LinearLayout>
+                <!-- Error State -->
+                <include
+                    android:id="@+id/errorLayout"
+                    layout="@layout/layout_error_state"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:visibility="gone"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent"/>
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+    </LinearLayout>
+
+    <!-- Floating Action Button (Floats on top of content) -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabCreateSkin"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="24dp"
+        android:src="@android:drawable/ic_input_add"
+        android:contentDescription="Create Skin"
+        app:backgroundTint="#BB86FC"
+        app:tint="#000000" />
+
+</FrameLayout>

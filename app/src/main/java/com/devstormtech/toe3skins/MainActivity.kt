@@ -31,6 +31,7 @@ import com.devstormtech.toe3skins.adapter.TruckFilterAdapter
 import com.devstormtech.toe3skins.api.RetrofitClient
 import com.devstormtech.toe3skins.model.Skin
 import com.facebook.shimmer.ShimmerFrameLayout
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.firebase.messaging.FirebaseMessaging
 import retrofit2.Call
 import retrofit2.Callback
@@ -54,6 +55,9 @@ class MainActivity : AppCompatActivity() {
     // Notification Toggle
     private lateinit var notificationBanner: CardView
     private lateinit var notificationSwitch: SwitchCompat
+
+    // FAB
+    private lateinit var fabCreateSkin: FloatingActionButton
 
     private var allSkins: List<Skin> = emptyList()
     private var currentFilterTruck = "All"
@@ -86,6 +90,13 @@ class MainActivity : AppCompatActivity() {
         swipeRefreshLayout = findViewById(R.id.swipeRefresh)
         notificationBanner = findViewById(R.id.cardNotificationPermission)
         notificationSwitch = findViewById(R.id.switchNotifications)
+        fabCreateSkin = findViewById(R.id.fabCreateSkin)
+
+        // FAB Click Listener
+        fabCreateSkin.setOnClickListener {
+            val intent = Intent(this, SkinMakerActivity::class.java)
+            startActivity(intent)
+        }
 
         btnBack.visibility = View.GONE
 
