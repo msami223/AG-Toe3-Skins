@@ -1,7 +1,61 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-             android:orientation="vertical"
-             android:layout_width="match_parent"
-             android:layout_height="match_parent">
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="8dp"
+    app:cardBackgroundColor="#2C2C2C"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="4dp">
 
-</LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:gravity="center_vertical">
+
+        <!-- Selection Indicator -->
+        <View
+            android:id="@+id/viewSelectedIndicator"
+            android:layout_width="4dp"
+            android:layout_height="match_parent"
+            android:background="#BB86FC"
+            android:layout_marginEnd="12dp"
+            android:visibility="gone" />
+
+        <!-- Thumbnail -->
+        <ImageView
+            android:id="@+id/ivLayerThumbnail"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:scaleType="centerInside"
+            android:background="#1E1E1E"
+            android:contentDescription="Layer thumbnail" />
+
+        <!-- Layer Name -->
+        <TextView
+            android:id="@+id/tvLayerName"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Layer 1"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp" />
+
+        <!-- Delete Button -->
+        <ImageView
+            android:id="@+id/btnDeleteLayer"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@android:drawable/ic_menu_delete"
+            android:tint="#FF5555"
+            android:padding="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Delete layer" />
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView>

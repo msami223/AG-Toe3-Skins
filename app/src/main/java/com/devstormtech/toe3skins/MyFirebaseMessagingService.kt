@@ -34,7 +34,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // --- FIXED: Looking in the correct 'drawable' folder now ---
+        // --- FIX: Looking in the correct 'drawable' folder now ---
         val largeIcon = BitmapFactory.decodeResource(resources, R.drawable.ic_large_notification)
 
         val builder = NotificationCompat.Builder(this, channelId)

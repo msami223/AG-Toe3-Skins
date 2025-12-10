@@ -44,22 +44,13 @@
 
     </LinearLayout>
 
-    <!-- Canvas Area -->
-    <FrameLayout
+    <!-- Canvas Area - CUSTOM VIEW -->
+    <com.devstormtech.toe3skins.CanvasView
+        android:id="@+id/canvasView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:background="#2C2C2C"
-        android:padding="16dp">
-
-        <ImageView
-            android:id="@+id/canvasImage"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:scaleType="centerInside"
-            android:contentDescription="Canvas" />
-
-    </FrameLayout>
+        android:background="#2C2C2C" />
 
     <!-- Toolbar -->
     <LinearLayout
@@ -78,7 +69,7 @@
             android:layout_weight="1"
             android:layout_marginEnd="4dp"
             android:text="Color"
-            android:textSize="12sp"
+            android:textSize="11sp"
             app:strokeColor="#BB86FC"
             android:textColor="#FFFFFF" />
 
@@ -91,7 +82,7 @@
             android:layout_marginEnd="4dp"
             android:layout_marginStart="4dp"
             android:text="Stickers"
-            android:textSize="12sp"
+            android:textSize="11sp"
             app:strokeColor="#BB86FC"
             android:textColor="#FFFFFF" />
 
@@ -104,7 +95,20 @@
             android:layout_marginStart="4dp"
             android:layout_marginEnd="4dp"
             android:text="Text"
-            android:textSize="12sp"
+            android:textSize="11sp"
+            app:strokeColor="#BB86FC"
+            android:textColor="#FFFFFF" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnLayers"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_weight="1"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
+            android:text="Layers"
+            android:textSize="11sp"
             app:strokeColor="#BB86FC"
             android:textColor="#FFFFFF" />
 
