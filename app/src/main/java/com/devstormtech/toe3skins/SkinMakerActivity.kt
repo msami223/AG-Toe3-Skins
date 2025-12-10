@@ -57,7 +57,34 @@ class SkinMakerActivity : AppCompatActivity() {
     }
 
     private fun loadTruckTemplate() {
-        canvasView.baseBitmap = BitmapFactory.decodeResource(resources, R.drawable.stream_template)
+        val options = BitmapFactory.Options().apply {
+            inJustDecodeBounds = true
+            inScaled = false // Do not upscale based on screen density
+        }
+        BitmapFactory.decodeResource(resources, R.drawable.stream_template, options)
+
+        val imageWidth = options.outWidth
+        val imageHeight = options.outHeight
+        val maxDimension = 2048
+        
+        android.util.Log.d("SkinMaker", "Original Dimensions: ${imageWidth}x${imageHeight}")
+
+        var calculatedSampleSize = 1
+        
+        // Strict logic: Keep doubling sample size until BOTH dimensions are <= maxDimension
+        while (imageWidth / calculatedSampleSize > maxDimension || imageHeight / calculatedSampleSize > maxDimension) {
+            calculatedSampleSize *= 2
+        }
+
+        android.util.Log.d("SkinMaker", "Calculated Sample Size: $calculatedSampleSize")
+
+        val decodeOptions = BitmapFactory.Options().apply {
+            inJustDecodeBounds = false
+            inSampleSize = calculatedSampleSize
+            inScaled = false // Do not upscale based on screen density
+        }
+
+        canvasView.baseBitmap = BitmapFactory.decodeResource(resources, R.drawable.stream_template, decodeOptions)
         canvasView.invalidate()
     }
 
