@@ -87,20 +87,39 @@ class SkinMakerFragment : Fragment() {
         }
     }
 
-    private fun loadTruckTemplate() {
+    // Current loaded truck
+    private var currentTruck: TruckModel? = null
+
+    /**
+     * Public method to load a truck template - called from MainActivity after truck selection
+     */
+    fun loadTruck(truck: TruckModel) {
+        currentTruck = truck
+        
+        // Clear previous elements
+        canvasView.elements.clear()
+        canvasView.selectedElement = null
+        canvasView.baseColor = null
+        undoStack.clear()
+        redoStack.clear()
+        
+        loadTruckTemplate(truck.templateResource)
+    }
+
+    private fun loadTruckTemplate(templateResource: Int = R.drawable.template_stream_st) {
         // Load original FULL resolution for saving (game-ready texture)
         val originalOptions = BitmapFactory.Options().apply {
             inJustDecodeBounds = false
             inScaled = false
         }
-        canvasView.originalBitmap = BitmapFactory.decodeResource(resources, R.drawable.stream_template, originalOptions)
+        canvasView.originalBitmap = BitmapFactory.decodeResource(resources, templateResource, originalOptions)
         
         // Load downsampled version for screen display (performance)
         val options = BitmapFactory.Options().apply {
             inJustDecodeBounds = true
             inScaled = false
         }
-        BitmapFactory.decodeResource(resources, R.drawable.stream_template, options)
+        BitmapFactory.decodeResource(resources, templateResource, options)
 
         val imageWidth = options.outWidth
         val imageHeight = options.outHeight
@@ -117,7 +136,7 @@ class SkinMakerFragment : Fragment() {
             inScaled = false
         }
 
-        canvasView.baseBitmap = BitmapFactory.decodeResource(resources, R.drawable.stream_template, decodeOptions)
+        canvasView.baseBitmap = BitmapFactory.decodeResource(resources, templateResource, decodeOptions)
         canvasView.invalidate()
     }
 
@@ -153,14 +172,20 @@ class SkinMakerFragment : Fragment() {
     }
 
     private fun showStickerPicker() {
-        val bottomSheet = StickerBottomSheet { stickerRes ->
-            if (stickerRes == R.drawable.ic_upload) {
-                pickImageLauncher.launch("image/*")
-            } else {
+        val bottomSheet = StickerBottomSheet(
+            onLocalStickerSelected = { stickerRes ->
+                if (stickerRes == R.drawable.ic_upload) {
+                    pickImageLauncher.launch("image/*")
+                } else {
+                    saveState()
+                    addSticker(stickerRes)
+                }
+            },
+            onRemoteStickerSelected = { stickerUrl ->
                 saveState()
-                addSticker(stickerRes)
+                addRemoteSticker(stickerUrl)
             }
-        }
+        )
         bottomSheet.show(childFragmentManager, "StickerPicker")
     }
 
@@ -215,6 +240,61 @@ class SkinMakerFragment : Fragment() {
         canvasView.elements.add(element)
         canvasView.selectedElement = element
         canvasView.invalidate()
+    }
+
+    private fun addRemoteSticker(imageUrl: String) {
+        // Use Glide to load the image from URL
+        com.bumptech.glide.Glide.with(this)
+            .asBitmap()
+            .load(imageUrl)
+            .into(object : com.bumptech.glide.request.target.CustomTarget<android.graphics.Bitmap>() {
+                override fun onResourceReady(
+                    resource: android.graphics.Bitmap,
+                    transition: com.bumptech.glide.request.transition.Transition<in android.graphics.Bitmap>?
+                ) {
+                    // Scale down if too large
+                    val maxDimension = 1200
+                    var width = resource.width
+                    var height = resource.height
+                    val scaledBitmap = if (width > maxDimension || height > maxDimension) {
+                        val ratio = width.toFloat() / height.toFloat()
+                        if (width > height) {
+                            width = maxDimension
+                            height = (width / ratio).toInt()
+                        } else {
+                            height = maxDimension
+                            width = (height * ratio).toInt()
+                        }
+                        android.graphics.Bitmap.createScaledBitmap(resource, width, height, true)
+                    } else {
+                        resource
+                    }
+
+                    val centerX = canvasView.width / 2f
+                    val centerY = canvasView.height / 2f
+
+                    val element = CanvasElement.StickerElement(
+                        id = UUID.randomUUID().toString(),
+                        bitmap = scaledBitmap,
+                        x = centerX,
+                        y = centerY,
+                        scaleX = 0.5f,
+                        scaleY = 0.5f,
+                        isSelected = true
+                    )
+
+                    canvasView.elements.forEach { it.isSelected = false }
+                    canvasView.elements.add(element)
+                    canvasView.selectedElement = element
+                    canvasView.invalidate()
+                }
+
+                override fun onLoadCleared(placeholder: android.graphics.drawable.Drawable?) {}
+                
+                override fun onLoadFailed(errorDrawable: android.graphics.drawable.Drawable?) {
+                    Toast.makeText(requireContext(), "Failed to load sticker", Toast.LENGTH_SHORT).show()
+                }
+            })
     }
 
     private fun addCustomSticker(uri: Uri) {

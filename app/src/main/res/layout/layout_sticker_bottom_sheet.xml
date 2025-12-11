@@ -3,17 +3,31 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="#1E1E1E"
+    android:background="?attr/colorSurface"
     android:padding="16dp">
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Choose Sticker"
-        android:textColor="#FFFFFF"
+        android:textColor="?attr/colorOnSurface"
         android:textSize="20sp"
         android:textStyle="bold"
-        android:layout_marginBottom="16dp" />
+        android:layout_marginBottom="12dp" />
+
+    <EditText
+        android:id="@+id/etStickerSearch"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:hint="Search stickers..."
+        android:textColorHint="?attr/colorOnSurfaceVariant"
+        android:textColor="?attr/colorOnSurface"
+        android:background="@drawable/bg_search_rounded"
+        android:paddingHorizontal="16dp"
+        android:inputType="text"
+        android:imeOptions="actionSearch"
+        android:maxLines="1"
+        android:layout_marginBottom="12dp" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvStickers"

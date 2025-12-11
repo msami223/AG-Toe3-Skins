@@ -8,4 +8,8 @@
         android:id="@+id/nav_skin_maker"
         android:icon="@drawable/ic_brush_black_24dp"
         android:title="Skin Editor" />
+    <item
+        android:id="@+id/nav_settings"
+        android:icon="@drawable/ic_settings_24dp"
+        android:title="Settings" />
 </menu>
