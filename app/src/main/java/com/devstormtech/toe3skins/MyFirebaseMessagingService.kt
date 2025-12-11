@@ -7,13 +7,28 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 
 class MyFirebaseMessagingService : FirebaseMessagingService() {
 
+    companion object {
+        private const val TAG = "FCM_Service"
+    }
+
+    override fun onNewToken(token: String) {
+        super.onNewToken(token)
+        Log.d(TAG, "New FCM Token: $token")
+        // You can send this token to your server if needed
+    }
+
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
+        Log.d(TAG, "Message received from: ${remoteMessage.from}")
+        Log.d(TAG, "Notification: ${remoteMessage.notification?.title} - ${remoteMessage.notification?.body}")
+        Log.d(TAG, "Data: ${remoteMessage.data}")
+        
         val title = remoteMessage.notification?.title ?: "New Skin Alert!"
         val body = remoteMessage.notification?.body ?: "Check out the latest skins."
         val truckFilter = remoteMessage.data["truck_filter"]

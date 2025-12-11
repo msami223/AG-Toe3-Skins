@@ -1,6 +1,7 @@
 package com.devstormtech.toe3skins
 
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
@@ -37,20 +38,76 @@ class MainActivity : AppCompatActivity() {
                 .add(R.id.fragment_container, settingsFragment, "settings")
                 .hide(skinMakerFragment)
                 .hide(settingsFragment)
-                .commit()
+                .commitNow()
         } else {
-            // Restore fragments from fragment manager
-            homeFragment = supportFragmentManager.findFragmentByTag("home") as? HomeFragment ?: HomeFragment()
-            skinMakerFragment = supportFragmentManager.findFragmentByTag("skin_maker") as? SkinMakerFragment ?: SkinMakerFragment()
-            settingsFragment = supportFragmentManager.findFragmentByTag("settings") as? SettingsFragment ?: SettingsFragment()
+            // Restore fragments from fragment manager after activity recreation (e.g., theme change)
+            val existingHome = supportFragmentManager.findFragmentByTag("home") as? HomeFragment
+            val existingSkinMaker = supportFragmentManager.findFragmentByTag("skin_maker") as? SkinMakerFragment
+            val existingSettings = supportFragmentManager.findFragmentByTag("settings") as? SettingsFragment
+            
+            if (existingHome != null && existingSkinMaker != null && existingSettings != null) {
+                // All fragments found, use them
+                homeFragment = existingHome
+                skinMakerFragment = existingSkinMaker
+                settingsFragment = existingSettings
+            } else {
+                // Fragments not found (can happen during rapid theme switching), recreate them
+                homeFragment = existingHome ?: HomeFragment()
+                skinMakerFragment = existingSkinMaker ?: SkinMakerFragment()
+                settingsFragment = existingSettings ?: SettingsFragment()
+                
+                // Re-add any missing fragments
+                val transaction = supportFragmentManager.beginTransaction()
+                if (existingHome == null) {
+                    transaction.add(R.id.fragment_container, homeFragment, "home")
+                }
+                if (existingSkinMaker == null) {
+                    transaction.add(R.id.fragment_container, skinMakerFragment, "skin_maker")
+                    transaction.hide(skinMakerFragment)
+                }
+                if (existingSettings == null) {
+                    transaction.add(R.id.fragment_container, settingsFragment, "settings")
+                    transaction.hide(settingsFragment)
+                }
+                transaction.commitNow()
+            }
         }
 
         setupBottomNavigation()
+        
+        // Handle notification click intent
+        handleNotificationIntent(intent)
+    }
+    
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        // Handle notification click when app is already running
+        intent?.let { handleNotificationIntent(it) }
+    }
+    
+    private fun handleNotificationIntent(intent: Intent) {
+        val targetTab = intent.getStringExtra("TARGET_TAB")
+        if (targetTab != null) {
+            // Clear the extra to prevent re-handling on config changes
+            intent.removeExtra("TARGET_TAB")
+            
+            // Apply the filter to HomeFragment
+            homeFragment.setInitialFilter(targetTab)
+            
+            // Ensure we're on the home tab
+            val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_navigation)
+            bottomNav.selectedItemId = R.id.nav_home
+        }
     }
 
     private fun setupBottomNavigation() {
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_navigation)
         bottomNav.setOnItemSelectedListener { item ->
+            // Check if fragments are attached before proceeding
+            if (!homeFragment.isAdded || !skinMakerFragment.isAdded || !settingsFragment.isAdded) {
+                return@setOnItemSelectedListener false
+            }
+            
             val transaction = supportFragmentManager.beginTransaction()
             
             // Hide all fragments first
@@ -61,17 +118,17 @@ class MainActivity : AppCompatActivity() {
             when (item.itemId) {
                 R.id.nav_home -> {
                     transaction.show(homeFragment)
-                    transaction.commit()
+                    transaction.commitNowAllowingStateLoss()
                     true
                 }
                 R.id.nav_skin_maker -> {
                     transaction.show(skinMakerFragment)
-                    transaction.commit()
+                    transaction.commitNowAllowingStateLoss()
                     true
                 }
                 R.id.nav_settings -> {
                     transaction.show(settingsFragment)
-                    transaction.commit()
+                    transaction.commitNowAllowingStateLoss()
                     true
                 }
                 else -> {

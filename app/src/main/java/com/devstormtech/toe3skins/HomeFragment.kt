@@ -407,4 +407,30 @@ class HomeFragment : Fragment() {
             }
         }
     }
+    
+    /**
+     * Called by MainActivity when app is opened via notification click
+     * to filter by a specific truck type
+     */
+    fun setInitialFilter(truckFilter: String) {
+        currentFilterTruck = truckFilter
+        
+        // Only update UI if the view is already created
+        if (view != null && ::rvTruckFilters.isInitialized) {
+            // Update the filter adapter to show the selected truck
+            val trucks = listOf("All", "Stream", "Merieles", "Moon", "Volcano", "Dawn", "Fiora", "Renovate")
+            val index = trucks.indexOfFirst { it.equals(truckFilter, ignoreCase = true) }
+            if (index >= 0) {
+                (rvTruckFilters.adapter as? TruckFilterAdapter)?.setSelected(index)
+                rvTruckFilters.scrollToPosition(index)
+            }
+            
+            // Reapply filters with the new truck selection
+            if (allSkins.isNotEmpty()) {
+                applyFilters()
+            }
+            
+            Toast.makeText(requireContext(), "Viewing $truckFilter Skins", Toast.LENGTH_SHORT).show()
+        }
+    }
 }
