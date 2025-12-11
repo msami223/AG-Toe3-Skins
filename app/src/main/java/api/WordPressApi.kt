@@ -23,4 +23,12 @@ interface WordPressApi {
     // Add +1 to View
     @POST("wp-json/toe3/v1/increment-view/{id}")
     fun incrementView(@Path("id") id: Int): Call<Void>
+    
+    // Add +1 to Like
+    @POST("wp-json/toe3/v1/increment-like/{id}")
+    fun incrementLike(@Path("id") id: Int): Call<Void>
+
+    // Remove -1 from Like
+    @POST("wp-json/toe3/v1/decrement-like/{id}")
+    fun decrementLike(@Path("id") id: Int): Call<Void>
 }

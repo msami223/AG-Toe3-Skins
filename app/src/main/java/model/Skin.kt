@@ -28,6 +28,7 @@ data class AcfData(
     @SerializedName("creator_name") val creatorName: String,
     @SerializedName("download_count") val downloadCount: Int,
     @SerializedName("view_count") val viewCount: Int,
+    @SerializedName("like_count") val likeCount: Int = 0,
     @SerializedName("installation_instructions") val instructions: String,
     @SerializedName("file_size") val fileSize: String,
     val tags: List<String>?

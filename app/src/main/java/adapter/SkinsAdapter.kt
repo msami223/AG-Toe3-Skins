@@ -22,6 +22,7 @@ class SkinsAdapter(
         val tvCreator: TextView = view.findViewById(R.id.tvCreator)
         val tvDownloads: TextView = view.findViewById(R.id.tvDownloads)
         val tvViews: TextView = view.findViewById(R.id.tvViews)
+        val tvLikes: TextView = view.findViewById(R.id.tvLikes)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SkinViewHolder {
@@ -39,6 +40,7 @@ class SkinsAdapter(
         holder.tvCreator.text = "By ${skin.acf.creatorName}"
         holder.tvDownloads.text = "⬇ ${skin.acf.downloadCount}"
         holder.tvViews.text = "👁 ${skin.acf.viewCount}"
+        holder.tvLikes.text = "❤ ${skin.acf.likeCount}"
 
         // Load Image using Glide
         // We check if previewImage1 is not empty, otherwise we don't load

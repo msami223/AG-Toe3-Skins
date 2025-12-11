@@ -13,6 +13,7 @@ import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -22,7 +23,10 @@ import androidx.appcompat.widget.SwitchCompat
 import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.devstormtech.toe3skins.adapter.RelatedSkinsAdapter
 import com.devstormtech.toe3skins.api.RetrofitClient
 import com.devstormtech.toe3skins.model.Skin
 import com.google.firebase.messaging.FirebaseMessaging
@@ -32,6 +36,14 @@ import retrofit2.Response
 
 class DetailActivity : AppCompatActivity() {
 
+    private var currentSkin: Skin? = null
+    private lateinit var relatedSkinsAdapter: RelatedSkinsAdapter
+    private lateinit var rvRelatedSkins: RecyclerView
+    private lateinit var tvRelatedSkinsTitle: TextView
+    private lateinit var btnLike: ImageButton
+    private lateinit var tvDetailLikes: TextView
+    private var currentLikeCount: Int = 0
+
     // Notification Toggle
     private lateinit var notificationBanner: CardView
     private lateinit var notificationSwitch: SwitchCompat
@@ -39,6 +51,7 @@ class DetailActivity : AppCompatActivity() {
     private val NOTIFICATION_PERMISSION_CODE = 102
     private val PREFS_NAME = "TOE3SkinsPrefs"
     private val KEY_NOTIFICATIONS_ENABLED = "notifications_enabled"
+    private val KEY_LIKED_SKINS = "liked_skins"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -88,8 +101,22 @@ class DetailActivity : AppCompatActivity() {
         val tvInstructions: TextView = findViewById(R.id.tvInstructions)
         val containerTags: LinearLayout = findViewById(R.id.containerTags)
         val btnDownload: Button = findViewById(R.id.btnDownload)
+        val btnShare: ImageButton = findViewById(R.id.btnShare)
+        
+        // Related Skins Setup
+        rvRelatedSkins = findViewById(R.id.rvRelatedSkins)
+        tvRelatedSkinsTitle = findViewById(R.id.tvRelatedSkinsTitle)
+        rvRelatedSkins.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        relatedSkinsAdapter = RelatedSkinsAdapter(emptyList()) { relatedSkin ->
+            // Open the related skin's detail page
+            val intent = Intent(this, DetailActivity::class.java)
+            intent.putExtra("SKIN_DATA", relatedSkin)
+            startActivity(intent)
+        }
+        rvRelatedSkins.adapter = relatedSkinsAdapter
 
         val skin = intent.getSerializableExtra("SKIN_DATA") as? Skin
+        currentSkin = skin
 
         if (skin != null) {
             // Increment View Count immediately
@@ -100,6 +127,12 @@ class DetailActivity : AppCompatActivity() {
             tvCreator.text = "By ${skin.acf.creatorName}"
             tvDownloads.text = "${skin.acf.downloadCount}"
             tvViews.text = "${skin.acf.viewCount}"
+            
+            // Likes count
+            tvDetailLikes = findViewById(R.id.tvDetailLikes)
+            currentLikeCount = skin.acf.likeCount
+            tvDetailLikes.text = "$currentLikeCount"
+            
             tvInstructions.text = if (skin.acf.instructions.isNotEmpty()) skin.acf.instructions else "No instructions provided."
 
             if (skin.acf.previewImage1.isNotEmpty()) {
@@ -135,6 +168,21 @@ class DetailActivity : AppCompatActivity() {
                 downloadSkin(skin.acf.skinFileUrl, skin.title.rendered)
                 incrementDownloadCount(skin.id)
             }
+            
+            // Like Logic
+            btnLike = findViewById(R.id.btnLike)
+            updateLikeButtonState(skin.id)
+            btnLike.setOnClickListener {
+                toggleLike(skin)
+            }
+            
+            // Share Logic
+            btnShare.setOnClickListener {
+                shareSkin(skin)
+            }
+            
+            // Load Related Skins
+            loadRelatedSkins(skin)
         }
     }
 
@@ -284,5 +332,129 @@ class DetailActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
         }
+    }
+    
+    private fun shareSkin(skin: Skin) {
+        val shareText = buildString {
+            append("🎨 Check out this awesome ${skin.acf.truckModel} skin!\n\n")
+            append("📦 ${skin.title.rendered}\n")
+            append("👤 By ${skin.acf.creatorName}\n\n")
+            append("⬇️ ${skin.acf.downloadCount} downloads\n")
+            append("👁️ ${skin.acf.viewCount} views\n\n")
+            append("Get more skins on TOE3 Skins app! 🚚")
+        }
+        
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, "TOE3 Skin: ${skin.title.rendered}")
+            putExtra(Intent.EXTRA_TEXT, shareText)
+        }
+        
+        startActivity(Intent.createChooser(shareIntent, "Share Skin via"))
+    }
+    
+    private fun loadRelatedSkins(currentSkin: Skin) {
+        RetrofitClient.instance.getSkins().enqueue(object : Callback<List<Skin>> {
+            override fun onResponse(call: Call<List<Skin>>, response: Response<List<Skin>>) {
+                if (response.isSuccessful && response.body() != null) {
+                    val allSkins = response.body()!!
+                    
+                    // Filter: same truck model, exclude current skin, limit to 6
+                    val relatedSkins = allSkins
+                        .filter { it.id != currentSkin.id && 
+                                  it.acf.truckModel.equals(currentSkin.acf.truckModel, ignoreCase = true) }
+                        .take(6)
+                    
+                    if (relatedSkins.isNotEmpty()) {
+                        tvRelatedSkinsTitle.visibility = View.VISIBLE
+                        rvRelatedSkins.visibility = View.VISIBLE
+                        relatedSkinsAdapter.updateSkins(relatedSkins)
+                    }
+                }
+            }
+            
+            override fun onFailure(call: Call<List<Skin>>, t: Throwable) {
+                // Silently fail - related skins section just won't show
+            }
+        })
+    }
+    
+    // ========== LIKE FUNCTIONALITY ==========
+    
+    private fun toggleLike(skin: Skin) {
+        val skinId = skin.id
+        if (isLiked(skinId)) {
+            // Already liked - unlike it
+            removeLikedSkin(skinId)
+            btnLike.setImageResource(R.drawable.ic_heart_outline_24dp)
+            
+            // Decrement local count and UI
+            if (currentLikeCount > 0) currentLikeCount--
+            tvDetailLikes.text = "$currentLikeCount"
+            
+            // Call API to remove like
+            decrementLikeCount(skinId)
+            
+            Toast.makeText(this, "Like removed", Toast.LENGTH_SHORT).show()
+        } else {
+            // Not liked - like it
+            saveLikedSkin(skinId)
+            btnLike.setImageResource(R.drawable.ic_heart_filled_24dp)
+            
+            // Increment local count and UI
+            currentLikeCount++
+            tvDetailLikes.text = "$currentLikeCount"
+            
+            // Call API to add like
+            incrementLikeCount(skinId)
+            
+            Toast.makeText(this, "❤️ You liked this!", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    private fun updateLikeButtonState(skinId: Int) {
+        if (isLiked(skinId)) {
+            btnLike.setImageResource(R.drawable.ic_heart_filled_24dp)
+        } else {
+            btnLike.setImageResource(R.drawable.ic_heart_outline_24dp)
+        }
+    }
+    
+    private fun isLiked(skinId: Int): Boolean {
+        val likedSkins = getLikedSkins()
+        return likedSkins.contains(skinId.toString())
+    }
+    
+    private fun saveLikedSkin(skinId: Int) {
+        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        val likedSkins = getLikedSkins().toMutableSet()
+        likedSkins.add(skinId.toString())
+        prefs.edit().putStringSet(KEY_LIKED_SKINS, likedSkins).apply()
+    }
+    
+    private fun removeLikedSkin(skinId: Int) {
+        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        val likedSkins = getLikedSkins().toMutableSet()
+        likedSkins.remove(skinId.toString())
+        prefs.edit().putStringSet(KEY_LIKED_SKINS, likedSkins).apply()
+    }
+    
+    private fun getLikedSkins(): Set<String> {
+        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        return prefs.getStringSet(KEY_LIKED_SKINS, emptySet()) ?: emptySet()
+    }
+    
+    private fun incrementLikeCount(id: Int) {
+        RetrofitClient.instance.incrementLike(id).enqueue(object : Callback<Void> {
+            override fun onResponse(call: Call<Void>, response: Response<Void>) {}
+            override fun onFailure(call: Call<Void>, t: Throwable) {}
+        })
+    }
+
+    private fun decrementLikeCount(id: Int) {
+        RetrofitClient.instance.decrementLike(id).enqueue(object : Callback<Void> {
+            override fun onResponse(call: Call<Void>, response: Response<Void>) {}
+            override fun onFailure(call: Call<Void>, t: Throwable) {}
+        })
     }
 }
