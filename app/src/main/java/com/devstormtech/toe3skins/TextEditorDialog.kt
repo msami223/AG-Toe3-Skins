@@ -41,12 +41,7 @@ class TextEditorDialog(
         val btnSave: MaterialButton = view.findViewById(R.id.btnSaveText)
 
         // Color buttons
-        val btnWhite: MaterialButton = view.findViewById(R.id.btnTextColorWhite)
-        val btnBlack: MaterialButton = view.findViewById(R.id.btnTextColorBlack)
-        val btnRed: MaterialButton = view.findViewById(R.id.btnTextColorRed)
-        val btnBlue: MaterialButton = view.findViewById(R.id.btnTextColorBlue)
-        val btnYellow: MaterialButton = view.findViewById(R.id.btnTextColorYellow)
-        val btnGreen: MaterialButton = view.findViewById(R.id.btnTextColorGreen)
+        val btnPickColor: MaterialButton = view.findViewById(R.id.btnPickColor)
 
         // Initialize with existing values if editing
         existingText?.let { etText.setText(it) }
@@ -76,12 +71,12 @@ class TextEditorDialog(
         })
 
         // Color buttons
-        btnWhite.setOnClickListener { setTextColor(Color.WHITE, tvPreview) }
-        btnBlack.setOnClickListener { setTextColor(Color.BLACK, tvPreview) }
-        btnRed.setOnClickListener { setTextColor(Color.RED, tvPreview) }
-        btnBlue.setOnClickListener { setTextColor(Color.BLUE, tvPreview) }
-        btnYellow.setOnClickListener { setTextColor(Color.YELLOW, tvPreview) }
-        btnGreen.setOnClickListener { setTextColor(Color.GREEN, tvPreview) }
+        btnPickColor.setOnClickListener {
+            val colorPicker = ColorPickerDialog(textColor) { selectedColor ->
+                setTextColor(selectedColor, tvPreview)
+            }
+            colorPicker.show(childFragmentManager, "ColorPicker")
+        }
 
         // Action buttons
         btnCancel.setOnClickListener { dismiss() }

@@ -14,6 +14,7 @@ class StickerBottomSheet(
 ) : BottomSheetDialogFragment() {
 
     private val stickerList = listOf(
+        R.drawable.ic_upload, // Special item for upload
         R.drawable.sticker_angel_devil,
         R.drawable.sticker_dragon_tribal,
         R.drawable.sticker_dragon_blue,

@@ -7,7 +7,6 @@ import android.view.MotionEvent
 import android.view.View
 import kotlin.math.atan2
 import kotlin.math.hypot
-import kotlin.math.sqrt
 
 class CanvasView @JvmOverloads constructor(
     context: Context,
@@ -17,7 +16,18 @@ class CanvasView @JvmOverloads constructor(
 
     // Canvas state
     val elements = mutableListOf<CanvasElement>()
+    
+    // Display bitmap (potentially downsampled for performance)
     var baseBitmap: Bitmap? = null
+        set(value) {
+            field = value
+            calculateBaseImageRect()
+            invalidate()
+        }
+    
+    // Original full-resolution bitmap for saving (preserves game texture mapping)
+    var originalBitmap: Bitmap? = null
+    
     var baseColor: Int? = null
     var selectedElement: CanvasElement? = null
 
@@ -45,13 +55,11 @@ class CanvasView @JvmOverloads constructor(
     var onElementDeleted: ((CanvasElement) -> Unit)? = null
 
     enum class ResizeHandle {
-        // Corners - proportional resize
         TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT,
-        // Sides - directional resize (non-proportional!)
         TOP, BOTTOM, LEFT, RIGHT
     }
 
-    // Paint objects (reused for performance)
+    // Paint objects
     private val boxPaint = Paint().apply {
         color = Color.parseColor("#BB86FC")
         style = Paint.Style.STROKE
@@ -82,7 +90,6 @@ class CanvasView @JvmOverloads constructor(
     }
 
     init {
-        // Enable hardware acceleration
         setLayerType(LAYER_TYPE_HARDWARE, null)
     }
 
@@ -101,15 +108,12 @@ class CanvasView @JvmOverloads constructor(
             val viewHeight = height.toFloat()
             val viewAspect = viewWidth / viewHeight
 
-            // Fit image maintaining aspect ratio
             if (bitmapAspect > viewAspect) {
-                // Bitmap is wider - fit to width
                 baseImageScale = viewWidth / bitmapWidth
                 val scaledHeight = bitmapHeight * baseImageScale
                 baseImageOffsetX = 0f
                 baseImageOffsetY = (viewHeight - scaledHeight) / 2f
             } else {
-                // Bitmap is taller - fit to height
                 baseImageScale = viewHeight / bitmapHeight
                 val scaledWidth = bitmapWidth * baseImageScale
                 baseImageOffsetX = (viewWidth - scaledWidth) / 2f
@@ -128,24 +132,18 @@ class CanvasView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        // Draw base truck template with aspect ratio preserved
         baseBitmap?.let { base ->
             val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
-
-            // Apply base color if set
             baseColor?.let { color ->
                 paint.colorFilter = PorterDuffColorFilter(color, PorterDuff.Mode.MULTIPLY)
             }
-
             canvas.drawBitmap(base, null, baseImageRect, paint)
         }
 
-        // Draw all elements
         elements.forEach { element ->
             drawElement(canvas, element)
         }
 
-        // Draw selection box for selected element
         selectedElement?.let { element ->
             drawSelectionBox(canvas, element)
         }
@@ -158,7 +156,7 @@ class CanvasView @JvmOverloads constructor(
                 canvas.save()
                 canvas.translate(element.x, element.y)
                 canvas.rotate(element.rotation)
-                canvas.scale(element.scaleX, element.scaleY) // Use scaleX and scaleY
+                canvas.scale(element.scaleX, element.scaleY)
                 canvas.drawBitmap(
                     element.bitmap,
                     -element.bitmap.width / 2f,
@@ -178,7 +176,7 @@ class CanvasView @JvmOverloads constructor(
                 canvas.save()
                 canvas.translate(element.x, element.y)
                 canvas.rotate(element.rotation)
-                canvas.scale(element.scaleX, element.scaleY) // Use scaleX and scaleY
+                canvas.scale(element.scaleX, element.scaleY)
                 canvas.drawText(element.text, 0f, 0f, paint)
                 canvas.restore()
             }
@@ -191,42 +189,33 @@ class CanvasView @JvmOverloads constructor(
             is CanvasElement.TextElement -> element.getBounds()
         }
 
-        // Draw bounding box
         canvas.drawRect(bounds, boxPaint)
 
-        // Draw 4 CORNER handles (proportional resize) - WHITE
+        // Corners
         listOf(
-            bounds.left to bounds.top,
-            bounds.right to bounds.top,
-            bounds.left to bounds.bottom,
-            bounds.right to bounds.bottom
+            bounds.left to bounds.top, bounds.right to bounds.top,
+            bounds.left to bounds.bottom, bounds.right to bounds.bottom
         ).forEach { (x, y) ->
             canvas.drawCircle(x, y, HANDLE_SIZE / 2, handlePaint)
             canvas.drawCircle(x, y, HANDLE_SIZE / 2, handleStrokePaint)
         }
 
-        // Draw 4 SIDE handles (directional resize) - GREEN
-        val midHandlePaint = Paint().apply {
-            color = Color.parseColor("#00FF00")
-            style = Paint.Style.FILL
-        }
-
+        // Sides
+        val midHandlePaint = Paint().apply { color = Color.GREEN; style = Paint.Style.FILL }
         listOf(
-            bounds.centerX() to bounds.top,      // Top
-            bounds.centerX() to bounds.bottom,   // Bottom
-            bounds.left to bounds.centerY(),     // Left
-            bounds.right to bounds.centerY()     // Right
+            bounds.centerX() to bounds.top, bounds.centerX() to bounds.bottom,
+            bounds.left to bounds.centerY(), bounds.right to bounds.centerY()
         ).forEach { (x, y) ->
             canvas.drawCircle(x, y, HANDLE_SIZE / 2, midHandlePaint)
             canvas.drawCircle(x, y, HANDLE_SIZE / 2, handleStrokePaint)
         }
 
-        // Trash handle
+        // Trash
         val trashX = bounds.right + 40f
         val trashY = bounds.top - 40f
         canvas.drawCircle(trashX, trashY, TRASH_HANDLE_SIZE / 2, trashPaint)
-
-        // Draw X icon
+        
+        // X Icon
         val iconSize = TRASH_HANDLE_SIZE / 3
         canvas.drawLine(trashX - iconSize, trashY - iconSize, trashX + iconSize, trashY + iconSize, trashIconPaint)
         canvas.drawLine(trashX + iconSize, trashY - iconSize, trashX - iconSize, trashY + iconSize, trashIconPaint)
@@ -246,31 +235,21 @@ class CanvasView @JvmOverloads constructor(
                     initialDistance = getDistance(event)
                     selectedElement?.let { element ->
                         when (element) {
-                            is CanvasElement.StickerElement -> {
-                                initialRotation = getRotation(event) - element.rotation
-                            }
-                            is CanvasElement.TextElement -> {
-                                initialRotation = getRotation(event) - element.rotation
-                            }
+                            is CanvasElement.StickerElement -> initialRotation = getRotation(event) - element.rotation
+                            is CanvasElement.TextElement -> initialRotation = getRotation(event) - element.rotation
                         }
                     }
                 }
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
-                if (isMultiTouch && event.pointerCount == 2) {
-                    handlePinchRotate(event)
-                } else if (isDragging) {
-                    handleDrag(event)
-                } else if (isResizingFromHandle) {
-                    handleResize(event)
-                }
+                if (isMultiTouch && event.pointerCount == 2) handlePinchRotate(event)
+                else if (isDragging) handleDrag(event)
+                else if (isResizingFromHandle) handleResize(event)
                 return true
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
-                if (event.pointerCount <= 1) {
-                    isMultiTouch = false
-                }
+                if (event.pointerCount <= 1) isMultiTouch = false
                 if (event.actionMasked == MotionEvent.ACTION_UP) {
                     isDragging = false
                     isResizingFromHandle = false
@@ -285,8 +264,9 @@ class CanvasView @JvmOverloads constructor(
     private fun handleTouchDown(event: MotionEvent) {
         val x = event.x
         val y = event.y
+        lastTouchX = x
+        lastTouchY = y
 
-        // Check trash button first
         selectedElement?.let { element ->
             val bounds = when (element) {
                 is CanvasElement.StickerElement -> element.getBounds()
@@ -302,18 +282,14 @@ class CanvasView @JvmOverloads constructor(
                 return
             }
 
-            // Check resize handles
             val handle = getHandleAtPoint(x, y, element)
             if (handle != null) {
                 isResizingFromHandle = true
                 activeHandle = handle
-                lastTouchX = x
-                lastTouchY = y
                 return
             }
         }
 
-        // Check if tapped on any element
         val tappedElement = elements.reversed().firstOrNull { element ->
             val bounds = when (element) {
                 is CanvasElement.StickerElement -> element.getBounds()
@@ -327,14 +303,11 @@ class CanvasView @JvmOverloads constructor(
             tappedElement.isSelected = true
             selectedElement = tappedElement
             isDragging = true
-            lastTouchX = x
-            lastTouchY = y
         } else {
             elements.forEach { it.isSelected = false }
             selectedElement = null
             isDragging = false
         }
-
         invalidate()
     }
 
@@ -370,98 +343,61 @@ class CanvasView @JvmOverloads constructor(
             val centerY = bounds.centerY()
 
             when (activeHandle) {
-                // WHITE CORNER HANDLES - PROPORTIONAL (both scaleX and scaleY change together)
                 ResizeHandle.TOP_LEFT, ResizeHandle.TOP_RIGHT,
                 ResizeHandle.BOTTOM_LEFT, ResizeHandle.BOTTOM_RIGHT -> {
-                    val oldDist = hypot(
-                        (lastTouchX - centerX).toDouble(),
-                        (lastTouchY - centerY).toDouble()
-                    ).toFloat()
-
-                    val newDist = hypot(
-                        (event.x - centerX).toDouble(),
-                        (event.y - centerY).toDouble()
-                    ).toFloat()
-
+                    val oldDist = hypot((lastTouchX - centerX).toDouble(), (lastTouchY - centerY).toDouble()).toFloat()
+                    val newDist = hypot((event.x - centerX).toDouble(), (event.y - centerY).toDouble()).toFloat()
                     val scaleFactor = newDist / oldDist
-
+                    
                     when (element) {
                         is CanvasElement.StickerElement -> {
                             element.scaleX *= scaleFactor
                             element.scaleY *= scaleFactor
-                            element.scaleX = element.scaleX.coerceAtMost(5f)
-                            element.scaleY = element.scaleY.coerceAtMost(5f)
                         }
                         is CanvasElement.TextElement -> {
                             element.scaleX *= scaleFactor
                             element.scaleY *= scaleFactor
-                            element.scaleX = element.scaleX.coerceAtMost(5f)
-                            element.scaleY = element.scaleY.coerceAtMost(5f)
                         }
                     }
                 }
-
-                // GREEN TOP/BOTTOM - VERTICAL ONLY (only scaleY changes, scaleX stays same)
-                ResizeHandle.TOP, ResizeHandle.BOTTOM -> {
-                    val dy = if (activeHandle == ResizeHandle.BOTTOM) {
-                        event.y - lastTouchY
-                    } else {
-                        lastTouchY - event.y
-                    }
-
-                    val oldHeight = bounds.height()
-                    val newHeight = oldHeight + (dy * 2) // *2 because we scale from center
-                    val scaleFactor = newHeight / oldHeight
-
-                    when (element) {
-                        is CanvasElement.StickerElement -> {
-                            element.scaleY *= scaleFactor
-                            element.scaleY = element.scaleY.coerceAtMost(5f)
-                            // scaleX stays the same!
-                        }
-                        is CanvasElement.TextElement -> {
-                            element.scaleY *= scaleFactor
-                            element.scaleY = element.scaleY.coerceAtMost(5f)
-                            // scaleX stays the same!
-                        }
-                    }
-                }
-
-                // GREEN LEFT/RIGHT - HORIZONTAL ONLY (only scaleX changes, scaleY stays same)
                 ResizeHandle.LEFT, ResizeHandle.RIGHT -> {
-                    val dx = if (activeHandle == ResizeHandle.RIGHT) {
-                        event.x - lastTouchX
-                    } else {
-                        lastTouchX - event.x
-                    }
-
-                    val oldWidth = bounds.width()
-                    val newWidth = oldWidth + (dx * 2) // *2 because we scale from center
-                    val scaleFactor = newWidth / oldWidth
-
+                    val dx = event.x - lastTouchX
                     when (element) {
                         is CanvasElement.StickerElement -> {
-                            element.scaleX *= scaleFactor
-                            element.scaleX = element.scaleX.coerceAtMost(5f)
-                            // scaleY stays the same!
+                            val change = dx / element.bitmap.width
+                            element.scaleX += change * 2
+                            element.scaleX = element.scaleX.coerceAtLeast(0.1f)
                         }
                         is CanvasElement.TextElement -> {
-                            element.scaleX *= scaleFactor
-                            element.scaleX = element.scaleX.coerceAtMost(5f)
-                            // scaleY stays the same!
+                            val change = dx / 100f
+                            element.scaleX += change
+                            element.scaleX = element.scaleX.coerceAtLeast(0.1f)
                         }
                     }
                 }
-
-                null -> {}
+                ResizeHandle.TOP, ResizeHandle.BOTTOM -> {
+                    val dy = event.y - lastTouchY
+                    when (element) {
+                        is CanvasElement.StickerElement -> {
+                            val change = dy / element.bitmap.height
+                            element.scaleY += change * 2
+                            element.scaleY = element.scaleY.coerceAtLeast(0.1f)
+                        }
+                        is CanvasElement.TextElement -> {
+                            val change = dy / 100f
+                            element.scaleY += change
+                            element.scaleY = element.scaleY.coerceAtLeast(0.1f)
+                        }
+                    }
+                }
+                else -> {}
             }
-
             lastTouchX = event.x
             lastTouchY = event.y
             invalidate()
         }
     }
-
+    
     private fun handlePinchRotate(event: MotionEvent) {
         selectedElement?.let { element ->
             val distance = getDistance(event)
@@ -472,19 +408,14 @@ class CanvasView @JvmOverloads constructor(
                 is CanvasElement.StickerElement -> {
                     element.scaleX *= scaleFactor
                     element.scaleY *= scaleFactor
-                    element.scaleX = element.scaleX.coerceAtMost(5f)
-                    element.scaleY = element.scaleY.coerceAtMost(5f)
                     element.rotation = rotation - initialRotation
                 }
                 is CanvasElement.TextElement -> {
                     element.scaleX *= scaleFactor
                     element.scaleY *= scaleFactor
-                    element.scaleX = element.scaleX.coerceAtMost(5f)
-                    element.scaleY = element.scaleY.coerceAtMost(5f)
                     element.rotation = rotation - initialRotation
                 }
             }
-
             initialDistance = distance
             invalidate()
         }
@@ -495,66 +426,115 @@ class CanvasView @JvmOverloads constructor(
             is CanvasElement.StickerElement -> element.getBounds()
             is CanvasElement.TextElement -> element.getBounds()
         }
-
-        // Check corner handles first
-        if (isPointInCircle(x, y, bounds.left, bounds.top, HANDLE_SIZE / 2)) {
-            return ResizeHandle.TOP_LEFT
-        }
-        if (isPointInCircle(x, y, bounds.right, bounds.top, HANDLE_SIZE / 2)) {
-            return ResizeHandle.TOP_RIGHT
-        }
-        if (isPointInCircle(x, y, bounds.left, bounds.bottom, HANDLE_SIZE / 2)) {
-            return ResizeHandle.BOTTOM_LEFT
-        }
-        if (isPointInCircle(x, y, bounds.right, bounds.bottom, HANDLE_SIZE / 2)) {
-            return ResizeHandle.BOTTOM_RIGHT
-        }
-
-        // Check side handles
-        if (isPointInCircle(x, y, bounds.centerX(), bounds.top, HANDLE_SIZE / 2)) {
-            return ResizeHandle.TOP
-        }
-        if (isPointInCircle(x, y, bounds.centerX(), bounds.bottom, HANDLE_SIZE / 2)) {
-            return ResizeHandle.BOTTOM
-        }
-        if (isPointInCircle(x, y, bounds.left, bounds.centerY(), HANDLE_SIZE / 2)) {
-            return ResizeHandle.LEFT
-        }
-        if (isPointInCircle(x, y, bounds.right, bounds.centerY(), HANDLE_SIZE / 2)) {
-            return ResizeHandle.RIGHT
-        }
-
+        
+        if (isPointInCircle(x, y, bounds.left, bounds.top, HANDLE_SIZE/2)) return ResizeHandle.TOP_LEFT
+        if (isPointInCircle(x, y, bounds.right, bounds.bottom, HANDLE_SIZE/2)) return ResizeHandle.BOTTOM_RIGHT
+        if (isPointInCircle(x, y, bounds.right, bounds.top, HANDLE_SIZE/2)) return ResizeHandle.TOP_RIGHT
+        if (isPointInCircle(x, y, bounds.left, bounds.bottom, HANDLE_SIZE/2)) return ResizeHandle.BOTTOM_LEFT
+        
+        if (isPointInCircle(x, y, bounds.centerX(), bounds.top, HANDLE_SIZE/2)) return ResizeHandle.TOP
+        if (isPointInCircle(x, y, bounds.centerX(), bounds.bottom, HANDLE_SIZE/2)) return ResizeHandle.BOTTOM
+        if (isPointInCircle(x, y, bounds.left, bounds.centerY(), HANDLE_SIZE/2)) return ResizeHandle.LEFT
+        if (isPointInCircle(x, y, bounds.right, bounds.centerY(), HANDLE_SIZE/2)) return ResizeHandle.RIGHT
+        
         return null
     }
 
     private fun isPointInCircle(px: Float, py: Float, cx: Float, cy: Float, radius: Float): Boolean {
-        val dx = px - cx
-        val dy = py - cy
-        return sqrt(dx * dx + dy * dy) <= radius
+        return hypot((px-cx).toDouble(), (py-cy).toDouble()) <= radius
     }
-
+    
     private fun getDistance(event: MotionEvent): Float {
         val dx = event.getX(0) - event.getX(1)
         val dy = event.getY(0) - event.getY(1)
         return hypot(dx.toDouble(), dy.toDouble()).toFloat()
     }
-
+    
     private fun getRotation(event: MotionEvent): Float {
         val dx = event.getX(1) - event.getX(0)
         val dy = event.getY(1) - event.getY(0)
         return Math.toDegrees(atan2(dy.toDouble(), dx.toDouble())).toFloat()
     }
 
-    fun captureCanvas(): Bitmap {
-        val tempSelected = selectedElement
-        selectedElement = null
+    /**
+     * FINAL SIMPLE SAVE
+     * Render the template and all elements by scaling screen coordinates directly to the original bitmap size.
+     */
+    fun generateHighResBitmap(): Bitmap? {
+        val original = originalBitmap ?: baseBitmap ?: return null
+        
+        android.util.Log.d("SaveDebug", "=== FIXED SAVE ===")
+        android.util.Log.d("SaveDebug", "Original bitmap size: ${original.width}x${original.height}")
+        android.util.Log.d("SaveDebug", "Base rect on screen: $baseImageRect")
+        
+        // Scale factor from displayed template to original resolution
+        val scaleX = original.width.toFloat() / baseImageRect.width()
+        val scaleY = original.height.toFloat() / baseImageRect.height()
+        android.util.Log.d("SaveDebug", "Scale factors: $scaleX x $scaleY")
+        
+        // Create output bitmap at original resolution
+        val outputBitmap = Bitmap.createBitmap(original.width, original.height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(outputBitmap)
+        
+        // Draw the full‑resolution template WITH color filter if set
+        val basePaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+        baseColor?.let { color ->
+            basePaint.colorFilter = PorterDuffColorFilter(color, PorterDuff.Mode.MULTIPLY)
+        }
+        // Draw template scaled to fill entire output bitmap
+        val destRect = RectF(0f, 0f, original.width.toFloat(), original.height.toFloat())
+        canvas.drawBitmap(original, null, destRect, basePaint)
+        
+        // Paint for stickers (same as on‑screen rendering)
+        val stickerPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
 
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        draw(canvas)
-
-        selectedElement = tempSelected
-
-        return bitmap
+        
+        // Render each element using scaled coordinates
+        elements.forEach { element ->
+            when (element) {
+                is CanvasElement.StickerElement -> {
+                    // Convert screen position to original‑bitmap coordinates
+                    val tx = (element.x - baseImageRect.left) * scaleX
+                    val ty = (element.y - baseImageRect.top) * scaleY
+                    val sx = element.scaleX * scaleX
+                    val sy = element.scaleY * scaleY
+                    
+                    android.util.Log.d("SaveDebug", "Sticker: screen(${element.x}, ${element.y}) -> original($tx, $ty) scale($sx, $sy)")
+                    
+                    canvas.save()
+                    canvas.translate(tx, ty)
+                    canvas.rotate(element.rotation)
+                    canvas.scale(sx, sy)
+                    canvas.drawBitmap(
+                        element.bitmap,
+                        -element.bitmap.width / 2f,
+                        -element.bitmap.height / 2f,
+                        stickerPaint
+                    )
+                    canvas.restore()
+                }
+                is CanvasElement.TextElement -> {
+                    val tx = (element.x - baseImageRect.left) * scaleX
+                    val ty = (element.y - baseImageRect.top) * scaleY
+                    val sx = element.scaleX * scaleX
+                    val sy = element.scaleY * scaleY
+                    
+                    val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        textSize = element.textSize * scaleX
+                        color = element.textColor
+                    }
+                    
+                    canvas.save()
+                    canvas.translate(tx, ty)
+                    canvas.rotate(element.rotation)
+                    canvas.scale(sx, sy)
+                    canvas.drawText(element.text, 0f, 0f, textPaint)
+                    canvas.restore()
+                }
+            }
+        }
+        
+        android.util.Log.d("SaveDebug", "=== SAVE COMPLETE ===")
+        return outputBitmap
     }
 }

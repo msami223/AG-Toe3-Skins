@@ -15,8 +15,8 @@ sealed class CanvasElement {
         override val matrix: Matrix = Matrix(),
         var x: Float = 0f,
         var y: Float = 0f,
-        var scaleX: Float = 1f,  // Separate X scale
-        var scaleY: Float = 1f,  // Separate Y scale
+        var scaleX: Float = 1f,
+        var scaleY: Float = 1f,
         var rotation: Float = 0f,
         override var isSelected: Boolean = false
     ) : CanvasElement() {
@@ -40,8 +40,8 @@ sealed class CanvasElement {
         override val matrix: Matrix = Matrix(),
         var x: Float = 0f,
         var y: Float = 0f,
-        var scaleX: Float = 1f,  // Separate X scale
-        var scaleY: Float = 1f,  // Separate Y scale
+        var scaleX: Float = 1f,
+        var scaleY: Float = 1f,
         var rotation: Float = 0f,
         override var isSelected: Boolean = false,
         var measuredWidth: Float = 0f,
