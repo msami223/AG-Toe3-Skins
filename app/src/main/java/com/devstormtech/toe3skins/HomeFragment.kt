@@ -59,7 +59,7 @@ class HomeFragment : Fragment() {
     private lateinit var notificationSwitch: SwitchCompat
 
     // FAB
-    private lateinit var fabCreateSkin: FloatingActionButton
+    private lateinit var fabCreateSkin: com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
 
     private var allSkins: List<Skin> = emptyList()
     private var currentFilterTruck = "All"

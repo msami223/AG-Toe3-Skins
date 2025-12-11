@@ -16,6 +16,7 @@ class MainActivity : AppCompatActivity() {
 
     private val PREFS_NAME = "TOE3SkinsPrefs"
     private val KEY_THEME = "app_theme"
+    private val KEY_SKIN_EDITOR_ACTIVATED = "skin_editor_activated"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Restore saved theme before super.onCreate
@@ -74,6 +75,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         setupBottomNavigation()
+        
+        // Hide skin editor tab if not yet activated
+        val isSkinEditorActivated = prefs.getBoolean(KEY_SKIN_EDITOR_ACTIVATED, false)
+        val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_navigation)
+        bottomNav.menu.findItem(R.id.nav_skin_maker).isVisible = isSkinEditorActivated
         
         // Handle notification click intent
         handleNotificationIntent(intent)
@@ -141,8 +147,18 @@ class MainActivity : AppCompatActivity() {
     fun switchToSkinEditor() {
         // Show truck selection dialog first
         val dialog = TruckSelectionDialog { selectedTruck ->
-            skinMakerFragment.loadTruck(selectedTruck)
+            // Mark skin editor as activated
+            val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            if (!prefs.getBoolean(KEY_SKIN_EDITOR_ACTIVATED, false)) {
+                prefs.edit().putBoolean(KEY_SKIN_EDITOR_ACTIVATED, true).apply()
+            }
+            
+            // Show the skin editor tab in bottom navigation
             val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_navigation)
+            bottomNav.menu.findItem(R.id.nav_skin_maker).isVisible = true
+            
+            // Load the truck and switch to skin maker tab
+            skinMakerFragment.loadTruck(selectedTruck)
             bottomNav.selectedItemId = R.id.nav_skin_maker
         }
         dialog.show(supportFragmentManager, "TruckSelection")

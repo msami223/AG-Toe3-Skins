@@ -31,6 +31,8 @@ class SkinMakerFragment : Fragment() {
     private lateinit var btnRedo: MaterialButton
     private lateinit var btnSave: MaterialButton
     private lateinit var btnBack: ImageView
+    private lateinit var tvTruckName: android.widget.TextView
+    private lateinit var btnChangeModel: MaterialButton
 
     // Undo/Redo stacks
     private val undoStack = Stack<CanvasState>()
@@ -72,8 +74,11 @@ class SkinMakerFragment : Fragment() {
         btnRedo = view.findViewById(R.id.btnRedo)
         btnSave = view.findViewById(R.id.btnSave)
         btnBack = view.findViewById(R.id.btnBackSkinMaker)
+        tvTruckName = view.findViewById(R.id.tvTruckName)
+        btnChangeModel = view.findViewById(R.id.btnChangeModel)
 
         btnBack.visibility = View.GONE // Hide back button in fragment mode
+        btnChangeModel.visibility = View.GONE // Hide until truck is loaded
 
         // Setup Tabs
         tabLayoutTools.addTab(tabLayoutTools.newTab().setText("Color"))
@@ -95,6 +100,10 @@ class SkinMakerFragment : Fragment() {
      */
     fun loadTruck(truck: TruckModel) {
         currentTruck = truck
+        
+        // Update header to show truck name
+        tvTruckName.text = "Editing: ${truck.displayName}"
+        btnChangeModel.visibility = View.VISIBLE
         
         // Clear previous elements
         canvasView.elements.clear()
@@ -160,6 +169,29 @@ class SkinMakerFragment : Fragment() {
         btnUndo.setOnClickListener { undo() }
         btnRedo.setOnClickListener { redo() }
         btnSave.setOnClickListener { saveSkin() }
+        
+        btnChangeModel.setOnClickListener {
+            // Show confirmation if there are unsaved elements
+            if (canvasView.elements.isNotEmpty() || canvasView.baseColor != null) {
+                androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                    .setTitle("Change Truck Model?")
+                    .setMessage("Changing the truck model will clear all your current work. Continue?")
+                    .setPositiveButton("Yes") { _, _ ->
+                        showTruckSelectionDialog()
+                    }
+                    .setNegativeButton("Cancel", null)
+                    .show()
+            } else {
+                showTruckSelectionDialog()
+            }
+        }
+    }
+    
+    private fun showTruckSelectionDialog() {
+        val dialog = TruckSelectionDialog { selectedTruck ->
+            loadTruck(selectedTruck)
+        }
+        dialog.show(childFragmentManager, "TruckSelection")
     }
 
     private fun showColorPicker() {
@@ -452,6 +484,15 @@ class SkinMakerFragment : Fragment() {
                     requireActivity().contentResolver.openOutputStream(it)?.use { outputStream ->
                         bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, outputStream)
                     }
+                    
+                    // Track download in history
+                    DownloadHistoryManager.addDownload(
+                        context = requireContext(),
+                        filename = filename,
+                        filePath = it.toString(),
+                        source = "Editor"
+                    )
+                    
                     Toast.makeText(requireContext(), "✅ Saved to Gallery!", Toast.LENGTH_LONG).show()
                 }
             } else {
@@ -468,6 +509,14 @@ class SkinMakerFragment : Fragment() {
                     put(MediaStore.Images.Media.DATA, file.absolutePath)
                 }
                 requireActivity().contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+                
+                // Track download in history
+                DownloadHistoryManager.addDownload(
+                    context = requireContext(),
+                    filename = filename,
+                    filePath = file.absolutePath,
+                    source = "Editor"
+                )
 
                 Toast.makeText(requireContext(), "✅ Saved!", Toast.LENGTH_LONG).show()
             }

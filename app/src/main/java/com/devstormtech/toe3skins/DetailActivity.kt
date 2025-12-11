@@ -328,6 +328,16 @@ class DetailActivity : AppCompatActivity() {
             request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
             val manager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
             manager.enqueue(request)
+            
+            // Track download in history
+            val downloadPath = "${Environment.DIRECTORY_DOWNLOADS}/$fileName"
+            DownloadHistoryManager.addDownload(
+                context = this,
+                filename = fileName,
+                filePath = downloadPath,
+                source = "WordPress"
+            )
+            
             Toast.makeText(this, "Download Started...", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()

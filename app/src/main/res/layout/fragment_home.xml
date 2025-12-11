@@ -101,16 +101,18 @@
 
     </LinearLayout>
 
-    <!-- Floating Action Button (Floats on top of content) -->
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
+    <!-- Extended Floating Action Button with "Make Skin" text (Floats on top of content) -->
+    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
         android:id="@+id/fabCreateSkin"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_margin="24dp"
-        android:src="@android:drawable/ic_input_add"
+        android:text="Make Skin"
         android:contentDescription="Create Skin"
+        app:icon="@android:drawable/ic_input_add"
         app:backgroundTint="#BB86FC"
-        app:tint="#000000" />
+        app:iconTint="#000000"
+        android:textColor="#000000" />
 
 </FrameLayout>
