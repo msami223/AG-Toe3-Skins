@@ -29,6 +29,7 @@ import com.bumptech.glide.Glide
 import com.devstormtech.toe3skins.adapter.RelatedSkinsAdapter
 import com.devstormtech.toe3skins.api.RetrofitClient
 import com.devstormtech.toe3skins.model.Skin
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.firebase.messaging.FirebaseMessaging
 import retrofit2.Call
 import retrofit2.Callback
@@ -73,6 +74,9 @@ class DetailActivity : AppCompatActivity() {
 
         // Setup Notification Toggle
         setupNotificationToggle()
+
+        // Setup Bottom Navigation
+        setupBottomNavigation()
 
         // --- UPDATED SEARCH LOGIC ---
         // Allow user to type, then go to Main Activity when they press "Search" on keyboard
@@ -466,5 +470,21 @@ class DetailActivity : AppCompatActivity() {
             override fun onResponse(call: Call<Void>, response: Response<Void>) {}
             override fun onFailure(call: Call<Void>, t: Throwable) {}
         })
+    }
+
+    private fun setupBottomNavigation() {
+        val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_navigation)
+        // Reset selection so no item is selected by default (optional, but looks better since we are on Detail)
+        // bottomNav.menu.setGroupCheckable(0, false, true) 
+        // Actually, we probably want to treat this as separate.
+        
+        bottomNav.setOnItemSelectedListener { item ->
+            val intent = Intent(this, MainActivity::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            intent.putExtra("TARGET_NAV_ID", item.itemId)
+            startActivity(intent)
+            overridePendingTransition(0, 0) // No animation for smoother feel
+            true
+        }
     }
 }

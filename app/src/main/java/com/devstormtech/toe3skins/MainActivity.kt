@@ -83,12 +83,19 @@ class MainActivity : AppCompatActivity() {
         
         // Handle notification click intent
         handleNotificationIntent(intent)
+        // Handle notification click intent
+        handleNotificationIntent(intent)
+        handleNavigationIntent(intent)
     }
     
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
         // Handle notification click when app is already running
-        intent?.let { handleNotificationIntent(it) }
+        // Handle notification click when app is already running
+        intent?.let { 
+            handleNotificationIntent(it)
+            handleNavigationIntent(it)
+        }
     }
     
     private fun handleNotificationIntent(intent: Intent) {
@@ -103,6 +110,15 @@ class MainActivity : AppCompatActivity() {
             // Ensure we're on the home tab
             val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_navigation)
             bottomNav.selectedItemId = R.id.nav_home
+        }
+    }
+
+    private fun handleNavigationIntent(intent: Intent) {
+        val targetNavId = intent.getIntExtra("TARGET_NAV_ID", -1)
+        if (targetNavId != -1) {
+            val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_navigation)
+            bottomNav.selectedItemId = targetNavId
+            intent.removeExtra("TARGET_NAV_ID")
         }
     }
 
