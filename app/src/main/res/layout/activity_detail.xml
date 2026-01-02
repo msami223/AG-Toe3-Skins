@@ -265,6 +265,19 @@
                     android:textColor="#CCCCCC"
                     android:lineSpacingExtra="4dp"
                     android:textSize="13sp" />
+                <!-- EDIT ACTION -->
+                <Button
+                    android:id="@+id/btnEditSkin"
+                    android:layout_width="match_parent"
+                    android:layout_height="60dp"
+                    android:layout_marginTop="24dp"
+                    android:text="EDIT IN CANVAS"
+                    android:backgroundTint="#03DAC5"
+                    android:textColor="#000000"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    app:icon="@drawable/ic_brush_black_24dp"
+                    app:iconTint="#000000" />
 
                 <!-- RELATED SKINS SECTION -->
                 <TextView
@@ -295,9 +308,9 @@
         android:id="@+id/bottom_navigation"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#1E1E1E"
-        app:itemIconTint="@color/white"
-        app:itemTextColor="@color/white"
+        android:background="?attr/colorSurface"
+        app:itemIconTint="?attr/colorOnSurface"
+        app:itemTextColor="?attr/colorOnSurface"
         app:menu="@menu/bottom_nav_menu" />
 
 </LinearLayout>

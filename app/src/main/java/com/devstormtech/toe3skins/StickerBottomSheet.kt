@@ -42,6 +42,8 @@ class StickerBottomSheet(
 
     private lateinit var recyclerView: RecyclerView
     private lateinit var searchEditText: EditText
+    private lateinit var noResultsState: View
+    private lateinit var tvNoResultsMessage: android.widget.TextView
     private var allStickers = mutableListOf<Pair<StickerItem, String>>()
     private var filteredStickers = mutableListOf<StickerItem>()
 
@@ -58,6 +60,8 @@ class StickerBottomSheet(
 
         recyclerView = view.findViewById(R.id.rvStickers)
         searchEditText = view.findViewById(R.id.etStickerSearch)
+        noResultsState = view.findViewById(R.id.noResultsState)
+        tvNoResultsMessage = view.findViewById(R.id.tvNoResultsMessage)
         recyclerView.layoutManager = GridLayoutManager(context, 3)
 
         // Start with local stickers
@@ -89,6 +93,16 @@ class StickerBottomSheet(
                     filteredStickers.add(sticker)
                 }
             }
+        }
+        
+        // Show/hide no results state
+        if (filteredStickers.isEmpty() && query.isNotEmpty()) {
+            noResultsState.visibility = View.VISIBLE
+            recyclerView.visibility = View.GONE
+            tvNoResultsMessage.text = "No stickers found for \"$query\""
+        } else {
+            noResultsState.visibility = View.GONE
+            recyclerView.visibility = View.VISIBLE
         }
         
         setupAdapter()

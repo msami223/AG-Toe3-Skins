@@ -29,10 +29,50 @@
         android:maxLines="1"
         android:layout_marginBottom="12dp" />
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rvStickers"
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:minHeight="300dp" />
+        android:minHeight="300dp">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvStickers"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <!-- No Results State -->
+        <LinearLayout
+            android:id="@+id/noResultsState"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="😕"
+                android:textSize="40sp"
+                android:layout_marginBottom="12dp" />
+
+            <TextView
+                android:id="@+id/tvNoResultsMessage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="No stickers found"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="16sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Try a different search term"
+                android:textColor="#888888"
+                android:textSize="13sp"
+                android:layout_marginTop="4dp" />
+
+        </LinearLayout>
+
+    </FrameLayout>
 
 </LinearLayout>

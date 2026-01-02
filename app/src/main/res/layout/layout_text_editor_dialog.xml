@@ -1,54 +1,160 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+<LinearLayout
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="#1E1E1E"
+    android:background="@drawable/dialog_rounded_bg"
     android:padding="24dp">
 
+    <!-- Header -->
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Add Text"
         android:textColor="#FFFFFF"
-        android:textSize="20sp"
+        android:textSize="22sp"
         android:textStyle="bold"
-        android:layout_marginBottom="16dp" />
+        android:layout_marginBottom="20dp" />
 
     <!-- Text Input -->
-    <EditText
-        android:id="@+id/etTextInput"
+    <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Enter text..."
-        android:textColor="#FFFFFF"
-        android:textColorHint="#666666"
-        android:background="#2C2C2C"
-        android:padding="16dp"
-        android:layout_marginBottom="16dp" />
+        android:layout_marginBottom="16dp"
+        app:boxBackgroundMode="outline"
+        app:boxBackgroundColor="#2C2C2C"
+        app:boxStrokeColor="#BB86FC"
+        app:hintTextColor="#888888"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
-    <!-- Preview -->
-    <TextView
-        android:id="@+id/tvTextPreview"
-        android:layout_width="match_parent"
-        android:layout_height="100dp"
-        android:text="Preview"
-        android:textColor="#FFFFFF"
-        android:textSize="48sp"
-        android:gravity="center"
-        android:background="#2C2C2C"
-        android:layout_marginBottom="16dp" />
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etTextInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Enter your text..."
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:padding="16dp"
+            android:maxLines="3"
+            android:inputType="textMultiLine" />
 
-    <!-- Text Size -->
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Live Preview -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Text Size"
-        android:textColor="#AAAAAA"
-        android:textSize="14sp"
+        android:text="Preview"
+        android:textColor="#888888"
+        android:textSize="13sp"
         android:layout_marginBottom="8dp" />
 
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="80dp"
+        android:background="@drawable/preview_bg"
+        android:layout_marginBottom="16dp">
+
+        <TextView
+            android:id="@+id/tvTextPreview"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="Your Text"
+            android:textColor="#FFFFFF"
+            android:textSize="28sp" />
+
+    </FrameLayout>
+
+    <!-- Font Selection -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Font"
+        android:textColor="#AAAAAA"
+        android:textSize="13sp"
+        android:layout_marginBottom="8dp" />
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        android:layout_marginBottom="16dp">
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/chipGroupFonts"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:singleSelection="true"
+            app:selectionRequired="true">
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipSans"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Sans"
+                android:fontFamily="sans-serif"
+                android:textColor="@color/chip_text_color"
+                app:chipBackgroundColor="@color/chip_bg_color"
+                app:checkedIconVisible="false"
+                android:checked="true" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipSerif"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Serif"
+                android:fontFamily="serif"
+                android:textColor="@color/chip_text_color"
+                app:chipBackgroundColor="@color/chip_bg_color"
+                app:checkedIconVisible="false" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipMono"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Mono"
+                android:fontFamily="monospace"
+                android:textColor="@color/chip_text_color"
+                app:chipBackgroundColor="@color/chip_bg_color"
+                app:checkedIconVisible="false" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipCursive"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Cursive"
+                android:fontFamily="cursive"
+                android:textColor="@color/chip_text_color"
+                app:chipBackgroundColor="@color/chip_bg_color"
+                app:checkedIconVisible="false" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipBold"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Bold"
+                android:fontFamily="sans-serif"
+                android:textStyle="bold"
+                android:textColor="@color/chip_text_color"
+                app:chipBackgroundColor="@color/chip_bg_color"
+                app:checkedIconVisible="false" />
+
+        </com.google.android.material.chip.ChipGroup>
+
+    </HorizontalScrollView>
+
+    <!-- Text Size -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -56,51 +162,101 @@
         android:gravity="center_vertical"
         android:layout_marginBottom="16dp">
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Size"
+            android:textColor="#AAAAAA"
+            android:textSize="14sp" />
+
         <SeekBar
             android:id="@+id/seekTextSize"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:layout_marginHorizontal="12dp"
             android:max="100"
-            android:progress="28" />
+            android:progress="50"
+            android:thumb="@drawable/slider_thumb" />
 
         <TextView
             android:id="@+id/tvSizeValue"
-            android:layout_width="60dp"
+            android:layout_width="50dp"
             android:layout_height="wrap_content"
             android:text="48sp"
             android:textColor="#FFFFFF"
             android:textSize="14sp"
-            android:gravity="end" />
+            android:gravity="end"
+            android:fontFamily="monospace" />
 
     </LinearLayout>
 
-    <!-- Color Options -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Text Color"
-        android:textColor="#AAAAAA"
-        android:textSize="14sp"
-        android:layout_marginBottom="8dp" />
-
+    <!-- Color Selection -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginBottom="16dp">
+        android:gravity="center_vertical"
+        android:layout_marginBottom="20dp">
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Color"
+            android:textColor="#AAAAAA"
+            android:textSize="14sp"
+            android:layout_marginEnd="12dp" />
+
+        <!-- Quick Color Options -->
+        <View
+            android:id="@+id/colorWhite"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_marginEnd="6dp"
+            android:background="@drawable/quick_color_white" />
+
+        <View
+            android:id="@+id/colorRed"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_marginEnd="6dp"
+            android:background="@drawable/quick_color_red" />
+
+        <View
+            android:id="@+id/colorYellow"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_marginEnd="6dp"
+            android:background="@drawable/quick_color_yellow" />
+
+        <View
+            android:id="@+id/colorBlue"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_marginEnd="6dp"
+            android:background="@drawable/quick_color_blue" />
+
+        <View
+            android:id="@+id/colorBlack"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_marginEnd="10dp"
+            android:background="@drawable/quick_color_black" />
+
+        <!-- Custom Color Button -->
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnPickColor"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:text="Back Color 🎨"
-            android:textSize="16sp"
-            android:textColor="#FFFFFF"
-            app:strokeColor="#FFFFFF"
-            app:strokeWidth="1dp"
-            app:backgroundTint="#00000000" />
+            android:id="@+id/btnCustomColor"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton.Icon"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:text="More"
+            android:textSize="11sp"
+            android:textColor="#BB86FC"
+            app:strokeColor="#BB86FC"
+            app:icon="@drawable/ic_palette"
+            app:iconTint="#BB86FC"
+            app:iconSize="14dp"
+            app:cornerRadius="16dp" />
 
     </LinearLayout>
 
@@ -112,25 +268,26 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnCancelText"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="48dp"
             android:layout_weight="1"
             android:layout_marginEnd="8dp"
             android:text="CANCEL"
-            android:textColor="#FFFFFF"
-            app:strokeColor="#666666" />
+            android:textColor="#AAAAAA" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSaveText"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="48dp"
             android:layout_weight="1"
             android:layout_marginStart="8dp"
             android:text="ADD TEXT"
             app:backgroundTint="#BB86FC"
-            android:textColor="#000000" />
+            android:textColor="#000000"
+            app:cornerRadius="24dp" />
 
     </LinearLayout>
 
 </LinearLayout>
+</ScrollView>

@@ -187,7 +187,58 @@ class DetailActivity : AppCompatActivity() {
             
             // Load Related Skins
             loadRelatedSkins(skin)
+
+            // Edit Skin Logic
+            val btnEditSkin: Button = findViewById(R.id.btnEditSkin)
+            btnEditSkin.setOnClickListener {
+                downloadAndEditSkin(skin.acf.skinFileUrl, skin.title.rendered, skin.acf.truckModel)
+            }
         }
+    }
+
+    private fun downloadAndEditSkin(url: String, title: String, truckModelName: String) {
+        if (url.isEmpty()) {
+            Toast.makeText(this, "Skin file not available", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        Toast.makeText(this, "Preparing Editor...", Toast.LENGTH_SHORT).show()
+
+        // We download the image to a temporary file, then pass URI to MainActivity
+        Thread {
+            try {
+                val bitmap = Glide.with(this)
+                    .asBitmap()
+                    .load(url)
+                    .submit()
+                    .get()
+
+                // Save to cache directory
+                val filename = "temp_edit_${System.currentTimeMillis()}.png"
+                val file = java.io.File(cacheDir, filename)
+                val out = java.io.FileOutputStream(file)
+                bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
+                out.flush()
+                out.close()
+
+                runOnUiThread {
+                    val intent = Intent(this, MainActivity::class.java).apply {
+                        action = "ACTION_EDIT_SKIN"
+                        putExtra("IMAGE_PATH", file.absolutePath)
+                        putExtra("TRUCK_MODEL_NAME", truckModelName)
+                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    }
+                    startActivity(intent)
+                    finish() // Close detail activity
+                }
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+                runOnUiThread {
+                    Toast.makeText(this, "Failed to load skin for editing", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }.start()
     }
 
     private fun setupNotificationToggle() {
@@ -343,6 +394,9 @@ class DetailActivity : AppCompatActivity() {
             )
             
             Toast.makeText(this, "Download Started...", Toast.LENGTH_SHORT).show()
+            
+            // Show ad after starting download
+            AdManager.onUserAction(this)
         } catch (e: Exception) {
             Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
         }

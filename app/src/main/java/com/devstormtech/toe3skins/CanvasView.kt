@@ -5,6 +5,8 @@ import android.graphics.*
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
+import android.view.GestureDetector
+import android.view.ScaleGestureDetector
 import kotlin.math.atan2
 import kotlin.math.hypot
 
@@ -13,6 +15,17 @@ class CanvasView @JvmOverloads constructor(
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
+
+    // View Transformation State
+    private var viewScale = 1f
+    private var viewTranslateX = 0f
+    private var viewTranslateY = 0f
+    private val minScale = 0.5f
+    private val maxScale = 5.0f
+
+    // Gesture Detectors
+    private val scaleDetector = ScaleGestureDetector(context, ScaleListener())
+    private val gestureDetector = GestureDetector(context, GestureListener())
 
     // Canvas state
     val elements = mutableListOf<CanvasElement>()
@@ -53,10 +66,16 @@ class CanvasView @JvmOverloads constructor(
 
     // Callbacks
     var onElementDeleted: ((CanvasElement) -> Unit)? = null
+    
+    interface OnInteractionListener {
+        fun onModificationStart()
+    }
+    var interactionListener: OnInteractionListener? = null
+    private var modificationStarted = false
 
     enum class ResizeHandle {
         TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT,
-        TOP, BOTTOM, LEFT, RIGHT
+        TOP, BOTTOM, LEFT, RIGHT, ROTATE
     }
 
     // Paint objects
@@ -87,6 +106,11 @@ class CanvasView @JvmOverloads constructor(
         color = Color.WHITE
         strokeWidth = 8f
         strokeCap = Paint.Cap.ROUND
+    }
+
+    private val rotationHandlePaint = Paint().apply {
+        color = Color.CYAN
+        style = Paint.Style.FILL
     }
 
     init {
@@ -133,11 +157,23 @@ class CanvasView @JvmOverloads constructor(
         super.onDraw(canvas)
 
         baseBitmap?.let { base ->
+            canvas.save()
+            canvas.translate(viewTranslateX, viewTranslateY)
+            canvas.scale(viewScale, viewScale)
+            
             val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
             baseColor?.let { color ->
                 paint.colorFilter = PorterDuffColorFilter(color, PorterDuff.Mode.MULTIPLY)
             }
             canvas.drawBitmap(base, null, baseImageRect, paint)
+            
+            // Draw editing outline (NOT exported - just for reference)
+            val outlinePaint = Paint().apply {
+                style = Paint.Style.STROKE
+                color = 0xFF888888.toInt() // Gray outline
+                strokeWidth = 2f / viewScale // Keep consistent width regardless of zoom
+            }
+            canvas.drawRect(baseImageRect, outlinePaint)
         }
 
         elements.forEach { element ->
@@ -146,6 +182,10 @@ class CanvasView @JvmOverloads constructor(
 
         selectedElement?.let { element ->
             drawSelectionBox(canvas, element)
+        }
+        
+        if (baseBitmap != null) {
+            canvas.restore()
         }
     }
 
@@ -166,9 +206,18 @@ class CanvasView @JvmOverloads constructor(
                 canvas.restore()
             }
             is CanvasElement.TextElement -> {
+                val typeface = when (element.fontFamily) {
+                    "sans-serif" -> android.graphics.Typeface.SANS_SERIF
+                    "serif" -> android.graphics.Typeface.SERIF
+                    "monospace" -> android.graphics.Typeface.MONOSPACE
+                    "cursive" -> android.graphics.Typeface.create("cursive", android.graphics.Typeface.NORMAL)
+                    "sans-serif-bold" -> android.graphics.Typeface.create(android.graphics.Typeface.SANS_SERIF, android.graphics.Typeface.BOLD)
+                    else -> android.graphics.Typeface.SANS_SERIF
+                }
                 val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                     textSize = element.textSize
                     color = element.textColor
+                    this.typeface = typeface
                 }
                 element.measuredWidth = paint.measureText(element.text)
                 element.measuredHeight = element.textSize
@@ -210,6 +259,13 @@ class CanvasView @JvmOverloads constructor(
             canvas.drawCircle(x, y, HANDLE_SIZE / 2, handleStrokePaint)
         }
 
+        // Rotation Handle (Top Center - Offset)
+        val rotX = bounds.centerX()
+        val rotY = bounds.top - 100f
+        canvas.drawLine(bounds.centerX(), bounds.top, rotX, rotY, handleStrokePaint)
+        canvas.drawCircle(rotX, rotY, HANDLE_SIZE / 2, rotationHandlePaint)
+        canvas.drawCircle(rotX, rotY, HANDLE_SIZE / 2, handleStrokePaint)
+
         // Trash
         val trashX = bounds.right + 40f
         val trashY = bounds.top - 40f
@@ -222,6 +278,24 @@ class CanvasView @JvmOverloads constructor(
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        // If no element is selected, handle View Zoom/Pan
+        if (selectedElement == null) {
+            scaleDetector.onTouchEvent(event)
+            gestureDetector.onTouchEvent(event)
+            
+            // If we are interacting with elements, we might want to still allow selection
+            if (!scaleDetector.isInProgress) {
+                 when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        handleTouchDown(event)
+                        return true
+                    }
+                 }
+            }
+            return true
+        }
+
+        // Element Logic (Only if Element is Selected)
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 handleTouchDown(event)
@@ -261,11 +335,22 @@ class CanvasView @JvmOverloads constructor(
         return super.onTouchEvent(event)
     }
 
+    private fun mapTouchToCanvas(x: Float, y: Float): PointF {
+        return PointF(
+            (x - viewTranslateX) / viewScale,
+            (y - viewTranslateY) / viewScale
+        )
+    }
+
     private fun handleTouchDown(event: MotionEvent) {
-        val x = event.x
-        val y = event.y
+        // Map raw touch to canvas coordinates
+        val canvasPoint = mapTouchToCanvas(event.x, event.y)
+        val x = canvasPoint.x
+        val y = canvasPoint.y
+        
         lastTouchX = x
         lastTouchY = y
+        modificationStarted = false
 
         selectedElement?.let { element ->
             val bounds = when (element) {
@@ -313,8 +398,13 @@ class CanvasView @JvmOverloads constructor(
 
     private fun handleDrag(event: MotionEvent) {
         selectedElement?.let { element ->
-            val dx = event.x - lastTouchX
-            val dy = event.y - lastTouchY
+            if (!modificationStarted) {
+                interactionListener?.onModificationStart()
+                modificationStarted = true
+            }
+            val canvasPoint = mapTouchToCanvas(event.x, event.y)
+            val dx = canvasPoint.x - lastTouchX
+            val dy = canvasPoint.y - lastTouchY
 
             when (element) {
                 is CanvasElement.StickerElement -> {
@@ -327,14 +417,18 @@ class CanvasView @JvmOverloads constructor(
                 }
             }
 
-            lastTouchX = event.x
-            lastTouchY = event.y
+            lastTouchX = canvasPoint.x
+            lastTouchY = canvasPoint.y
             invalidate()
         }
     }
 
     private fun handleResize(event: MotionEvent) {
         selectedElement?.let { element ->
+            if (!modificationStarted) {
+                interactionListener?.onModificationStart()
+                modificationStarted = true
+            }
             val bounds = when (element) {
                 is CanvasElement.StickerElement -> element.getBounds()
                 is CanvasElement.TextElement -> element.getBounds()
@@ -345,8 +439,9 @@ class CanvasView @JvmOverloads constructor(
             when (activeHandle) {
                 ResizeHandle.TOP_LEFT, ResizeHandle.TOP_RIGHT,
                 ResizeHandle.BOTTOM_LEFT, ResizeHandle.BOTTOM_RIGHT -> {
+                    val canvasPoint = mapTouchToCanvas(event.x, event.y)
                     val oldDist = hypot((lastTouchX - centerX).toDouble(), (lastTouchY - centerY).toDouble()).toFloat()
-                    val newDist = hypot((event.x - centerX).toDouble(), (event.y - centerY).toDouble()).toFloat()
+                    val newDist = hypot((canvasPoint.x - centerX).toDouble(), (canvasPoint.y - centerY).toDouble()).toFloat()
                     val scaleFactor = newDist / oldDist
                     
                     when (element) {
@@ -361,7 +456,8 @@ class CanvasView @JvmOverloads constructor(
                     }
                 }
                 ResizeHandle.LEFT, ResizeHandle.RIGHT -> {
-                    val dx = event.x - lastTouchX
+                    val canvasPoint = mapTouchToCanvas(event.x, event.y)
+                    val dx = canvasPoint.x - lastTouchX
                     when (element) {
                         is CanvasElement.StickerElement -> {
                             val change = dx / element.bitmap.width
@@ -376,7 +472,8 @@ class CanvasView @JvmOverloads constructor(
                     }
                 }
                 ResizeHandle.TOP, ResizeHandle.BOTTOM -> {
-                    val dy = event.y - lastTouchY
+                    val canvasPoint = mapTouchToCanvas(event.x, event.y)
+                    val dy = canvasPoint.y - lastTouchY
                     when (element) {
                         is CanvasElement.StickerElement -> {
                             val change = dy / element.bitmap.height
@@ -390,16 +487,31 @@ class CanvasView @JvmOverloads constructor(
                         }
                     }
                 }
+                ResizeHandle.ROTATE -> {
+                    val canvasPoint = mapTouchToCanvas(event.x, event.y)
+                    val angle = Math.toDegrees(atan2((canvasPoint.y - centerY).toDouble(), (canvasPoint.x - centerX).toDouble())).toFloat()
+                    // Adjust because handle is at -90 degrees (top) relative to center
+                    val newRotation = angle + 90f
+                    when (element) {
+                        is CanvasElement.StickerElement -> element.rotation = newRotation
+                        is CanvasElement.TextElement -> element.rotation = newRotation
+                    }
+                }
                 else -> {}
             }
-            lastTouchX = event.x
-            lastTouchY = event.y
+            val canvasPoint = mapTouchToCanvas(event.x, event.y)
+            lastTouchX = canvasPoint.x
+            lastTouchY = canvasPoint.y
             invalidate()
         }
     }
     
     private fun handlePinchRotate(event: MotionEvent) {
         selectedElement?.let { element ->
+            if (!modificationStarted) {
+                interactionListener?.onModificationStart()
+                modificationStarted = true
+            }
             val distance = getDistance(event)
             val scaleFactor = distance / initialDistance
             val rotation = getRotation(event)
@@ -437,6 +549,9 @@ class CanvasView @JvmOverloads constructor(
         if (isPointInCircle(x, y, bounds.left, bounds.centerY(), HANDLE_SIZE/2)) return ResizeHandle.LEFT
         if (isPointInCircle(x, y, bounds.right, bounds.centerY(), HANDLE_SIZE/2)) return ResizeHandle.RIGHT
         
+        // Check rotation handle
+        if (isPointInCircle(x, y, bounds.centerX(), bounds.top - 100f, HANDLE_SIZE/2)) return ResizeHandle.ROTATE
+
         return null
     }
 
@@ -536,5 +651,33 @@ class CanvasView @JvmOverloads constructor(
         
         android.util.Log.d("SaveDebug", "=== SAVE COMPLETE ===")
         return outputBitmap
+    }
+    // Gesture Listeners
+    private inner class ScaleListener : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+        override fun onScale(detector: ScaleGestureDetector): Boolean {
+            val scaleFactor = detector.scaleFactor
+            viewScale *= scaleFactor
+            viewScale = viewScale.coerceIn(minScale, maxScale)
+            
+            // TODO: Zoom towards focus point rather than 0,0 for better UX
+            // For now, center zoom is acceptable as a start
+            
+            invalidate()
+            return true
+        }
+    }
+
+    private inner class GestureListener : GestureDetector.SimpleOnGestureListener() {
+        override fun onScroll(
+            e1: MotionEvent?,
+            e2: MotionEvent,
+            distanceX: Float,
+            distanceY: Float
+        ): Boolean {
+            viewTranslateX -= distanceX
+            viewTranslateY -= distanceY
+            invalidate()
+            return true
+        }
     }
 }

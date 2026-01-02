@@ -6,31 +6,31 @@ plugins {
 
 android {
     namespace = "com.devstormtech.toe3skins"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.devstormtech.toe3skins"
         minSdk = 24
-        targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        targetSdk = 35
+        versionCode = 4
+        versionName = "1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
         create("release") {
-            storeFile = file("keystore/release-key.jks")
-            storePassword = "password"
-            keyAlias = "key0"
-            keyPassword = "password"
+            storeFile = file("../toe3skins-release.jks")
+            storePassword = "Sami223@!"
+            keyAlias = "toe3skins"
+            keyPassword = "Sami223@!"
         }
     }
 
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = false
+            isMinifyEnabled = true // Enable R8 shrinking to reduce size
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -81,4 +81,19 @@ dependencies {
 
     // SHIMMER EFFECT (Added this)
     implementation("com.facebook.shimmer:shimmer:0.5.0")
+
+    // MVVM & Lifecycle
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.0")
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.8.0")
+    implementation("androidx.fragment:fragment-ktx:1.7.0")
+
+    // Google Play In-App Updates (Force Update)
+    implementation("com.google.android.play:app-update:2.1.0")
+    implementation("com.google.android.play:app-update-ktx:2.1.0")
+
+    // Google AdMob
+    implementation("com.google.android.gms:play-services-ads:23.0.0")
+
+    // Yandex Mobile Ads SDK (Core)
+    implementation("com.yandex.android:mobileads:7.0.1")
 }

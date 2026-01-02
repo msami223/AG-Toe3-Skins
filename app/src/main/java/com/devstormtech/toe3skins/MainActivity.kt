@@ -3,16 +3,32 @@ package com.devstormtech.toe3skins
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.fragment.app.Fragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.google.android.material.snackbar.Snackbar
+import com.google.android.play.core.appupdate.AppUpdateManager
+import com.google.android.play.core.appupdate.AppUpdateManagerFactory
+import com.google.android.play.core.appupdate.AppUpdateOptions
+import com.google.android.play.core.install.InstallStateUpdatedListener
+import com.google.android.play.core.install.model.AppUpdateType
+import com.google.android.play.core.install.model.InstallStatus
+import com.google.android.play.core.install.model.UpdateAvailability
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var homeFragment: HomeFragment
+
     private lateinit var skinMakerFragment: SkinMakerFragment
     private lateinit var settingsFragment: SettingsFragment
+    private lateinit var myProjectsFragment: MyProjectsFragment
+
+    // In-App Update
+    private lateinit var appUpdateManager: AppUpdateManager
+    private val UPDATE_REQUEST_CODE = 1001
 
     private val PREFS_NAME = "TOE3SkinsPrefs"
     private val KEY_THEME = "app_theme"
@@ -32,30 +48,36 @@ class MainActivity : AppCompatActivity() {
             homeFragment = HomeFragment()
             skinMakerFragment = SkinMakerFragment()
             settingsFragment = SettingsFragment()
+            myProjectsFragment = MyProjectsFragment()
             
             supportFragmentManager.beginTransaction()
                 .add(R.id.fragment_container, homeFragment, "home")
                 .add(R.id.fragment_container, skinMakerFragment, "skin_maker")
                 .add(R.id.fragment_container, settingsFragment, "settings")
+                .add(R.id.fragment_container, myProjectsFragment, "my_projects")
                 .hide(skinMakerFragment)
                 .hide(settingsFragment)
+                .hide(myProjectsFragment)
                 .commitNow()
         } else {
             // Restore fragments from fragment manager after activity recreation (e.g., theme change)
             val existingHome = supportFragmentManager.findFragmentByTag("home") as? HomeFragment
             val existingSkinMaker = supportFragmentManager.findFragmentByTag("skin_maker") as? SkinMakerFragment
             val existingSettings = supportFragmentManager.findFragmentByTag("settings") as? SettingsFragment
+            val existingMyProjects = supportFragmentManager.findFragmentByTag("my_projects") as? MyProjectsFragment
             
-            if (existingHome != null && existingSkinMaker != null && existingSettings != null) {
+            if (existingHome != null && existingSkinMaker != null && existingSettings != null && existingMyProjects != null) {
                 // All fragments found, use them
                 homeFragment = existingHome
                 skinMakerFragment = existingSkinMaker
                 settingsFragment = existingSettings
+                myProjectsFragment = existingMyProjects
             } else {
                 // Fragments not found (can happen during rapid theme switching), recreate them
                 homeFragment = existingHome ?: HomeFragment()
                 skinMakerFragment = existingSkinMaker ?: SkinMakerFragment()
                 settingsFragment = existingSettings ?: SettingsFragment()
+                myProjectsFragment = existingMyProjects ?: MyProjectsFragment()
                 
                 // Re-add any missing fragments
                 val transaction = supportFragmentManager.beginTransaction()
@@ -70,10 +92,24 @@ class MainActivity : AppCompatActivity() {
                     transaction.add(R.id.fragment_container, settingsFragment, "settings")
                     transaction.hide(settingsFragment)
                 }
+                if (existingMyProjects == null) {
+                    transaction.add(R.id.fragment_container, myProjectsFragment, "my_projects")
+                    transaction.hide(myProjectsFragment)
+                }
                 transaction.commitNow()
             }
         }
 
+
+
+        // Initialize In-App Update Manager
+        appUpdateManager = AppUpdateManagerFactory.create(this)
+        checkForUpdate()
+
+        // Initialize AdManager
+        AdManager.initialize(this)
+
+        setupProjectLoading()
         setupBottomNavigation()
         
         // Hide skin editor tab if not yet activated
@@ -84,17 +120,81 @@ class MainActivity : AppCompatActivity() {
         // Handle notification click intent
         handleNotificationIntent(intent)
         // Handle notification click intent
+        // Handle notification click intent
         handleNotificationIntent(intent)
         handleNavigationIntent(intent)
+        handleEditSkinIntent(intent)
+    }
+
+    private fun checkForUpdate() {
+        val appUpdateInfoTask = appUpdateManager.appUpdateInfo
+
+        appUpdateInfoTask.addOnSuccessListener { appUpdateInfo ->
+            if (appUpdateInfo.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE
+                && appUpdateInfo.isUpdateTypeAllowed(AppUpdateType.IMMEDIATE)) {
+                
+                // Request IMMEDIATE update - user cannot use app until they update
+                try {
+                    appUpdateManager.startUpdateFlowForResult(
+                        appUpdateInfo,
+                        this,
+                        AppUpdateOptions.newBuilder(AppUpdateType.IMMEDIATE).build(),
+                        UPDATE_REQUEST_CODE
+                    )
+                } catch (e: Exception) {
+                    Log.e("MainActivity", "Update flow failed: ${e.message}")
+                }
+            }
+        }
+
+        appUpdateInfoTask.addOnFailureListener { e ->
+            Log.e("MainActivity", "Failed to check for updates: ${e.message}")
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        
+        // Check if an IMMEDIATE update is still pending (user pressed back)
+        appUpdateManager.appUpdateInfo.addOnSuccessListener { appUpdateInfo ->
+            if (appUpdateInfo.updateAvailability() == UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS) {
+                // Force the update to restart if user tried to cancel
+                try {
+                    appUpdateManager.startUpdateFlowForResult(
+                        appUpdateInfo,
+                        this,
+                        AppUpdateOptions.newBuilder(AppUpdateType.IMMEDIATE).build(),
+                        UPDATE_REQUEST_CODE
+                    )
+                } catch (e: Exception) {
+                    Log.e("MainActivity", "Resume update flow failed: ${e.message}")
+                }
+            }
+        }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        
+        if (requestCode == UPDATE_REQUEST_CODE) {
+            if (resultCode != RESULT_OK) {
+                // Update failed or was cancelled - check again
+                Log.e("MainActivity", "Update failed! Result code: $resultCode")
+                // Re-check to force the update
+                checkForUpdate()
+            }
+        }
     }
     
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
         // Handle notification click when app is already running
-        // Handle notification click when app is already running
+
         intent?.let { 
             handleNotificationIntent(it)
             handleNavigationIntent(it)
+            handleEditSkinIntent(it)
         }
     }
     
@@ -122,6 +222,37 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun handleEditSkinIntent(intent: Intent) {
+        if (intent.action == "ACTION_EDIT_SKIN") {
+            val imagePath = intent.getStringExtra("IMAGE_PATH")
+            val truckName = intent.getStringExtra("TRUCK_MODEL_NAME")
+            
+            if (imagePath != null && truckName != null) {
+                // Find Truck by Name (simple check for now)
+                val truck = TruckModel.getAllTrucks().find { 
+                    it.displayName.equals(truckName, ignoreCase = true) || 
+                    it.id.equals(truckName, ignoreCase = true) 
+                } ?: TruckModel.getAllTrucks().first() // Fallback to first if not found
+
+                // Mark skin editor as activated
+                val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                prefs.edit().putBoolean(KEY_SKIN_EDITOR_ACTIVATED, true).apply()
+                
+                val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_navigation)
+                bottomNav.menu.findItem(R.id.nav_skin_maker).isVisible = true
+                
+                // Load into Fragment FIRST so isProjectLoaded() returns true
+                skinMakerFragment.loadSkinForEditing(truck, imagePath)
+                
+                // Switch Tab (now isProjectLoaded will be true)
+                bottomNav.selectedItemId = R.id.nav_skin_maker
+                
+                // Clear action so it doesn't run again on rotate
+                intent.action = ""
+            }
+        }
+    }
+
     private fun setupBottomNavigation() {
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_navigation)
         bottomNav.setOnItemSelectedListener { item ->
@@ -136,6 +267,7 @@ class MainActivity : AppCompatActivity() {
             transaction.hide(homeFragment)
             transaction.hide(skinMakerFragment)
             transaction.hide(settingsFragment)
+            transaction.hide(myProjectsFragment)
             
             when (item.itemId) {
                 R.id.nav_home -> {
@@ -144,12 +276,23 @@ class MainActivity : AppCompatActivity() {
                     true
                 }
                 R.id.nav_skin_maker -> {
-                    transaction.show(skinMakerFragment)
-                    transaction.commitNowAllowingStateLoss()
-                    true
+                    if (skinMakerFragment.isProjectLoaded()) {
+                        transaction.show(skinMakerFragment)
+                        transaction.commitNowAllowingStateLoss()
+                        true
+                    } else {
+                        // Project not loaded, force selection
+                        switchToSkinEditor()
+                        false // Don't select the tab yet
+                    }
                 }
                 R.id.nav_settings -> {
                     transaction.show(settingsFragment)
+                    transaction.commitNowAllowingStateLoss()
+                    true
+                }
+                R.id.nav_my_projects -> {
+                    transaction.show(myProjectsFragment)
                     transaction.commitNowAllowingStateLoss()
                     true
                 }
@@ -175,8 +318,39 @@ class MainActivity : AppCompatActivity() {
             
             // Load the truck and switch to skin maker tab
             skinMakerFragment.loadTruck(selectedTruck)
+            
+            // Now programmatically select the tab, which will trigger the listener again
+            // prompting the "isProjectLoaded" check which will now be True
             bottomNav.selectedItemId = R.id.nav_skin_maker
         }
         dialog.show(supportFragmentManager, "TruckSelection")
+    }
+    
+    private fun setupProjectLoading() {
+        myProjectsFragment.onProjectSelected = { projectId ->
+            val projectManager = ProjectManager(this)
+            val (truck, state, name) = projectManager.loadProject(projectId)
+            
+            if (truck != null) {
+                // Switch to SkinMakerFragment
+                val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_navigation)
+                
+                // Allow SkinEditor to be visible if it wasn't
+                val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                if (!prefs.getBoolean(KEY_SKIN_EDITOR_ACTIVATED, false)) {
+                     prefs.edit().putBoolean(KEY_SKIN_EDITOR_ACTIVATED, true).apply()
+                     bottomNav.menu.findItem(R.id.nav_skin_maker).isVisible = true
+                }
+
+                // Load Project
+                skinMakerFragment.loadProject(truck, state, projectId, name)
+                
+                // Switch Tab
+                bottomNav.selectedItemId = R.id.nav_skin_maker
+                
+            } else {
+                android.widget.Toast.makeText(this, "Failed to load project", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 }

@@ -4,185 +4,171 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="#1E1E1E"
+    android:background="@drawable/dialog_rounded_bg"
     android:padding="24dp">
 
+    <!-- Header -->
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Choose Color"
         android:textColor="#FFFFFF"
-        android:textSize="20sp"
+        android:textSize="22sp"
         android:textStyle="bold"
         android:layout_marginBottom="16dp" />
 
-    <!-- Color Preview -->
-    <View
-        android:id="@+id/colorPreview"
+    <!-- Color Wheel -->
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="80dp"
-        android:background="#FFFFFF"
-        android:layout_marginBottom="16dp" />
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp">
 
-    <!-- Preset Colors -->
+        <com.devstormtech.toe3skins.ColorWheelView
+            android:id="@+id/colorWheel"
+            android:layout_width="280dp"
+            android:layout_height="280dp"
+            android:layout_gravity="center" />
+
+    </FrameLayout>
+
+    <!-- Color Preview + Hex -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="16dp">
+
+        <View
+            android:id="@+id/colorPreview"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="@drawable/color_preview_bg" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:layout_marginStart="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Selected"
+                android:textColor="#888888"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/tvHexCode"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="#FFFFFF"
+                android:textColor="#FFFFFF"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:fontFamily="monospace" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Brightness Slider -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Brightness"
+        android:textColor="#AAAAAA"
+        android:textSize="13sp"
+        android:layout_marginBottom="8dp" />
+
+    <SeekBar
+        android:id="@+id/seekBrightness"
+        android:layout_width="match_parent"
+        android:layout_height="32dp"
+        android:max="100"
+        android:progress="100"
+        android:thumb="@drawable/slider_thumb"
+        android:layout_marginBottom="20dp" />
+
+    <!-- Quick Colors -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Quick Colors"
         android:textColor="#AAAAAA"
-        android:textSize="14sp"
-        android:layout_marginBottom="8dp" />
+        android:textSize="13sp"
+        android:layout_marginBottom="12dp" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginBottom="16dp">
+        android:layout_marginBottom="24dp">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnColorWhite"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        <View
+            android:id="@+id/quickWhite"
             android:layout_width="0dp"
-            android:layout_height="48dp"
+            android:layout_height="36dp"
             android:layout_weight="1"
             android:layout_marginEnd="4dp"
-            app:backgroundTint="#FFFFFF"
-            app:strokeColor="#666666" />
+            android:background="@drawable/quick_color_white" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnColorRed"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        <View
+            android:id="@+id/quickRed"
             android:layout_width="0dp"
-            android:layout_height="48dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="4dp"
+            android:background="@drawable/quick_color_red" />
+
+        <View
+            android:id="@+id/quickOrange"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="4dp"
+            android:background="@drawable/quick_color_orange" />
+
+        <View
+            android:id="@+id/quickYellow"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="4dp"
+            android:background="@drawable/quick_color_yellow" />
+
+        <View
+            android:id="@+id/quickGreen"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="4dp"
+            android:background="@drawable/quick_color_green" />
+
+        <View
+            android:id="@+id/quickBlue"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="4dp"
+            android:background="@drawable/quick_color_blue" />
+
+        <View
+            android:id="@+id/quickPurple"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="4dp"
+            android:background="@drawable/quick_color_purple" />
+
+        <View
+            android:id="@+id/quickBlack"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
             android:layout_weight="1"
             android:layout_marginStart="4dp"
-            android:layout_marginEnd="4dp"
-            app:backgroundTint="#FF0000"
-            app:strokeColor="#666666" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnColorBlue"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:layout_weight="1"
-            android:layout_marginStart="4dp"
-            android:layout_marginEnd="4dp"
-            app:backgroundTint="#0000FF"
-            app:strokeColor="#666666" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnColorGreen"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:layout_weight="1"
-            android:layout_marginStart="4dp"
-            android:layout_marginEnd="4dp"
-            app:backgroundTint="#00FF00"
-            app:strokeColor="#666666" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnColorYellow"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:layout_weight="1"
-            android:layout_marginStart="4dp"
-            android:layout_marginEnd="4dp"
-            app:backgroundTint="#FFFF00"
-            app:strokeColor="#666666" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnColorBlack"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:layout_weight="1"
-            android:layout_marginStart="4dp"
-            app:backgroundTint="#000000"
-            app:strokeColor="#666666" />
-
-    </LinearLayout>
-
-    <!-- Custom RGB -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Custom RGB"
-        android:textColor="#AAAAAA"
-        android:textSize="14sp"
-        android:layout_marginBottom="8dp" />
-
-    <!-- Red Slider -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:layout_marginBottom="8dp">
-
-        <TextView
-            android:layout_width="60dp"
-            android:layout_height="wrap_content"
-            android:text="Red"
-            android:textColor="#FF0000"
-            android:textSize="14sp" />
-
-        <SeekBar
-            android:id="@+id/seekRed"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:max="255" />
-
-    </LinearLayout>
-
-    <!-- Green Slider -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:layout_marginBottom="8dp">
-
-        <TextView
-            android:layout_width="60dp"
-            android:layout_height="wrap_content"
-            android:text="Green"
-            android:textColor="#00FF00"
-            android:textSize="14sp" />
-
-        <SeekBar
-            android:id="@+id/seekGreen"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:max="255" />
-
-    </LinearLayout>
-
-    <!-- Blue Slider -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:layout_marginBottom="16dp">
-
-        <TextView
-            android:layout_width="60dp"
-            android:layout_height="wrap_content"
-            android:text="Blue"
-            android:textColor="#0000FF"
-            android:textSize="14sp" />
-
-        <SeekBar
-            android:id="@+id/seekBlue"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:max="255" />
+            android:background="@drawable/quick_color_black" />
 
     </LinearLayout>
 
@@ -194,24 +180,24 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnCancelColor"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="48dp"
             android:layout_weight="1"
             android:layout_marginEnd="8dp"
             android:text="CANCEL"
-            android:textColor="#FFFFFF"
-            app:strokeColor="#666666" />
+            android:textColor="#AAAAAA" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnApplyColor"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="48dp"
             android:layout_weight="1"
             android:layout_marginStart="8dp"
             android:text="APPLY"
             app:backgroundTint="#BB86FC"
-            android:textColor="#000000" />
+            android:textColor="#000000"
+            app:cornerRadius="24dp" />
 
     </LinearLayout>
 

@@ -1,6 +1,7 @@
 package com.devstormtech.toe3skins
 
 import android.content.ContentValues
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.os.Build
@@ -17,6 +18,7 @@ import androidx.fragment.app.Fragment
 import androidx.activity.result.contract.ActivityResultContracts
 import android.net.Uri
 import android.graphics.ImageDecoder
+import android.graphics.Matrix
 
 
 import com.google.android.material.button.MaterialButton
@@ -42,6 +44,9 @@ class SkinMakerFragment : Fragment() {
         uri?.let { addCustomSticker(it) }
     }
 
+    private lateinit var projectManager: ProjectManager
+    private var currentProjectId: String? = null
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -58,9 +63,10 @@ class SkinMakerFragment : Fragment() {
         view.viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
             override fun onGlobalLayout() {
                 view.viewTreeObserver.removeOnGlobalLayoutListener(this)
-                if (canvasView.baseBitmap == null) {
-                    loadTruckTemplate()
-                }
+                // Auto-load removed to enforce selection
+                // if (canvasView.baseBitmap == null) {
+                //    loadTruckTemplate()
+                // }
             }
         })
         
@@ -72,7 +78,10 @@ class SkinMakerFragment : Fragment() {
         tabLayoutTools = view.findViewById(R.id.tabLayoutTools)
         btnUndo = view.findViewById(R.id.btnUndo)
         btnRedo = view.findViewById(R.id.btnRedo)
+        btnRedo = view.findViewById(R.id.btnRedo)
         btnSave = view.findViewById(R.id.btnSave)
+        val btnExport = view.findViewById<MaterialButton>(R.id.btnExport)
+        btnExport?.setOnClickListener { exportSkin() }
         btnBack = view.findViewById(R.id.btnBackSkinMaker)
         tvTruckName = view.findViewById(R.id.tvTruckName)
         btnChangeModel = view.findViewById(R.id.btnChangeModel)
@@ -90,6 +99,58 @@ class SkinMakerFragment : Fragment() {
         canvasView.onElementDeleted = {
             Toast.makeText(requireContext(), "Element deleted", Toast.LENGTH_SHORT).show()
         }
+        
+        projectManager = ProjectManager(requireContext())
+    }
+
+    private fun exportSkin() {
+        if (currentTruck == null) {
+            Toast.makeText(requireContext(), "No truck loaded!", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        val bitmap = canvasView.generateHighResBitmap()
+        if (bitmap == null) {
+            Toast.makeText(requireContext(), "Failed to generate skin.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        val filename = "TOE3_Skin_${System.currentTimeMillis()}.png"
+        
+        val contentValues = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, filename)
+            put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/TOE3Skins")
+                put(MediaStore.Images.Media.IS_PENDING, 1)
+            }
+        }
+        
+        val resolver = requireContext().contentResolver
+        val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+        
+        if (uri != null) {
+            try {
+                resolver.openOutputStream(uri).use { out ->
+                    if (out != null) {
+                         bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                    }
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    contentValues.clear()
+                    contentValues.put(MediaStore.Images.Media.IS_PENDING, 0)
+                    resolver.update(uri, contentValues, null, null)
+                }
+                Toast.makeText(requireContext(), "Saved to Gallery!", Toast.LENGTH_SHORT).show()
+                // Show ad after export
+                AdManager.onUserAction(requireActivity())
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Toast.makeText(requireContext(), "Export Failed: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+             Toast.makeText(requireContext(), "Failed to create file.", Toast.LENGTH_SHORT).show()
+        }
     }
 
     // Current loaded truck
@@ -100,6 +161,7 @@ class SkinMakerFragment : Fragment() {
      */
     fun loadTruck(truck: TruckModel) {
         currentTruck = truck
+        currentProjectId = null // Reset project ID for new truck
         
         // Update header to show truck name
         tvTruckName.text = "Editing: ${truck.displayName}"
@@ -113,6 +175,89 @@ class SkinMakerFragment : Fragment() {
         redoStack.clear()
         
         loadTruckTemplate(truck.templateResource)
+    }
+
+    fun loadProject(truck: TruckModel, state: CanvasState, projectId: String, projectName: String) {
+        currentTruck = truck
+        currentProjectId = projectId
+        currentProjectName = projectName
+        
+        tvTruckName.text = "Editing: ${truck.displayName}"
+        btnChangeModel.visibility = View.VISIBLE
+        
+        // Reset stacks
+        undoStack.clear()
+        redoStack.clear()
+        
+        // Load Template first (sets up originalBitmap/baseBitmap defaults)
+        loadTruckTemplate(truck.templateResource)
+        
+        // Restore custom base bitmap if present (fixes "White Truck" issue)
+        if (state.baseBitmap != null) {
+            canvasView.baseBitmap = state.baseBitmap
+             // Also update originalBitmap to match visual consistency? 
+             // ideally we'd have saved the high-res one, but for now this prevents data loss.
+             // If we don't update originalBitmap, high-res export might be blank/default.
+             // Let's effectively promote this bitmap to original for consistency.
+             canvasView.originalBitmap = state.baseBitmap
+        }
+        
+        // Apply State
+        canvasView.elements.clear()
+        canvasView.elements.addAll(state.elements)
+        canvasView.baseColor = state.baseColor
+        canvasView.invalidate()
+    }
+
+    fun loadSkinForEditing(truck: TruckModel, skinPath: String) {
+        currentTruck = truck
+        currentProjectId = null // New Project
+        currentProjectName = null
+        
+        tvTruckName.text = "Editing: ${truck.displayName}"
+        btnChangeModel.visibility = View.VISIBLE
+        
+        // FULL RESET - Clear everything from previous session
+        undoStack.clear()
+        redoStack.clear()
+        canvasView.elements.clear()
+        canvasView.selectedElement = null
+        canvasView.baseColor = null
+        canvasView.baseBitmap = null
+        canvasView.originalBitmap = null
+        
+        // Load fresh Template
+        loadTruckTemplate(truck.templateResource)
+        
+        // Elements already cleared above
+        
+        // Decode the skin bitmap from file
+        val bitmap = try {
+            BitmapFactory.decodeFile(skinPath)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+
+        if (bitmap != null) {
+            // USE THE DOWNLOADED SKIN DIRECTLY AS THE BASE (no white template)
+            // Make it mutable so we can draw stickers on it later
+            val mutableSkin = bitmap.copy(android.graphics.Bitmap.Config.ARGB_8888, true)
+            
+            // Set the skin as BOTH baseBitmap (display) and originalBitmap (export)
+            canvasView.baseBitmap = mutableSkin
+            canvasView.originalBitmap = mutableSkin
+            canvasView.invalidate()
+            
+            Toast.makeText(context, "Skin loaded", Toast.LENGTH_SHORT).show()
+        } else {
+             Toast.makeText(context, "Failed to load skin image", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+
+    fun isProjectLoaded(): Boolean {
+        return currentTruck != null && canvasView.baseBitmap != null
     }
 
     private fun loadTruckTemplate(templateResource: Int = R.drawable.template_stream_st) {
@@ -150,6 +295,13 @@ class SkinMakerFragment : Fragment() {
     }
 
     private fun setupListeners() {
+        // Capture state before modification starts (Drag, Resize, Rotate)
+        canvasView.interactionListener = object : CanvasView.OnInteractionListener {
+            override fun onModificationStart() {
+                saveState()
+            }
+        }
+
         tabLayoutTools.addOnTabSelectedListener(object : com.google.android.material.tabs.TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: com.google.android.material.tabs.TabLayout.Tab?) {
                 when (tab?.text) {
@@ -222,9 +374,9 @@ class SkinMakerFragment : Fragment() {
     }
 
     private fun showTextEditor() {
-        val dialog = TextEditorDialog { text, size, color ->
+        val dialog = TextEditorDialog { text, size, color, font ->
             saveState()
-            addText(text, size, color)
+            addText(text, size, color, font)
         }
         dialog.show(childFragmentManager, "TextEditor")
     }
@@ -379,7 +531,7 @@ class SkinMakerFragment : Fragment() {
         }
     }
 
-    private fun addText(text: String, textSize: Float, textColor: Int) {
+    private fun addText(text: String, textSize: Float, textColor: Int, fontFamily: String = "sans-serif") {
         val actualSize = 144f
         val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
             this.textSize = actualSize
@@ -395,6 +547,7 @@ class SkinMakerFragment : Fragment() {
             text = text,
             textSize = textSize,
             textColor = textColor,
+            fontFamily = fontFamily,
             x = centerX,
             y = centerY,
             scaleX = 1f,
@@ -418,7 +571,8 @@ class SkinMakerFragment : Fragment() {
                     is CanvasElement.TextElement -> it.copy()
                 }
             },
-            baseColor = canvasView.baseColor
+            baseColor = canvasView.baseColor,
+            baseBitmap = canvasView.baseBitmap
         )
         undoStack.push(state)
         redoStack.clear()
@@ -462,66 +616,70 @@ class SkinMakerFragment : Fragment() {
         }
     }
 
+    private var currentProjectName: String? = null
+
     private fun saveSkin() {
-        val bitmap = canvasView.generateHighResBitmap()
-        if (bitmap == null) {
-            Toast.makeText(requireContext(), "Template not loaded yet", Toast.LENGTH_SHORT).show()
-            return
+        if (currentTruck == null) return
+
+        val container = android.widget.LinearLayout(requireContext())
+        container.orientation = android.widget.LinearLayout.VERTICAL
+        container.setPadding(50, 40, 50, 10)
+
+        val input = android.widget.EditText(requireContext())
+        input.hint = "My Awesome Skin"
+        input.setText(currentProjectName ?: "") // Pre-fill name
+        container.addView(input)
+
+        val checkNew = android.widget.CheckBox(requireContext())
+        checkNew.text = "Save as copy"
+        
+        // Only show "Save as copy" if we are already editing an existing project
+        if (currentProjectId != null) {
+            checkNew.isChecked = false
+            container.addView(checkNew)
         }
 
-        try {
-            val filename = "truck_skin_${System.currentTimeMillis()}.png"
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val contentValues = ContentValues().apply {
-                    put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
-                    put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
-                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/TOE3Skins")
-                }
-
-                val uri = requireActivity().contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
-                uri?.let {
-                    requireActivity().contentResolver.openOutputStream(it)?.use { outputStream ->
-                        bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, outputStream)
-                    }
-                    
-                    // Track download in history
-                    DownloadHistoryManager.addDownload(
-                        context = requireContext(),
-                        filename = filename,
-                        filePath = it.toString(),
-                        source = "Editor"
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle(if(currentProjectId != null) "Update Project" else "Save Project")
+            .setView(container)
+            .setPositiveButton("Save") { _, _ ->
+                val name = input.text.toString().ifBlank { "Untitled Skin" }
+                currentProjectName = name
+                
+                val currentState = CanvasState(
+                    elements = canvasView.elements.toList(),
+                    baseColor = canvasView.baseColor,
+                    baseBitmap = canvasView.baseBitmap // Save the background!
+                )
+                
+                // If "Save as copy" is checked, we force a new ID (null)
+                val targetProjectId = if (checkNew.isChecked) null else currentProjectId
+                
+                // Generate Thumbnail
+                val thumbnail = canvasView.generateHighResBitmap() ?: return@setPositiveButton
+                
+                // Run on background thread
+                Thread {
+                    val metadata = projectManager.saveProject(
+                        projectId = targetProjectId,
+                        name = name,
+                        truck = currentTruck!!,
+                        canvasState = currentState,
+                        thumbnail = thumbnail
                     )
                     
-                    Toast.makeText(requireContext(), "✅ Saved to Gallery!", Toast.LENGTH_LONG).show()
-                }
-            } else {
-                val imagesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
-                val toe3Dir = java.io.File(imagesDir, "TOE3Skins")
-                if (!toe3Dir.exists()) toe3Dir.mkdirs()
-
-                val file = java.io.File(toe3Dir, filename)
-                FileOutputStream(file).use { outputStream ->
-                    bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, outputStream)
-                }
-
-                val contentValues = ContentValues().apply {
-                    put(MediaStore.Images.Media.DATA, file.absolutePath)
-                }
-                requireActivity().contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
-                
-                // Track download in history
-                DownloadHistoryManager.addDownload(
-                    context = requireContext(),
-                    filename = filename,
-                    filePath = file.absolutePath,
-                    source = "Editor"
-                )
-
-                Toast.makeText(requireContext(), "✅ Saved!", Toast.LENGTH_LONG).show()
+                    requireActivity().runOnUiThread {
+                        currentProjectId = metadata.id
+                        currentProjectName = metadata.name // Update local name
+                        Toast.makeText(requireContext(), "Project saved!", Toast.LENGTH_SHORT).show()
+                        // Show ad after saving project
+                        AdManager.onUserAction(requireActivity())
+                    }
+                }.start()
             }
-        } catch (e: Exception) {
-            Toast.makeText(requireContext(), "❌ Save failed: ${e.message}", Toast.LENGTH_LONG).show()
-        }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
+
+
 }

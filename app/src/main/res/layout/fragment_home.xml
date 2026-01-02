@@ -73,14 +73,14 @@
                         android:useDefaultMargins="true"
                         android:padding="8dp">
 
-                        <include layout="@layout/item_skin_placeholder" />
-                        <include layout="@layout/item_skin_placeholder" />
-                        <include layout="@layout/item_skin_placeholder" />
-                        <include layout="@layout/item_skin_placeholder" />
-                        <include layout="@layout/item_skin_placeholder" />
-                        <include layout="@layout/item_skin_placeholder" />
-                        <include layout="@layout/item_skin_placeholder" />
-                        <include layout="@layout/item_skin_placeholder" />
+                        <include layout="@layout/item_skin_skeleton" />
+                        <include layout="@layout/item_skin_skeleton" />
+                        <include layout="@layout/item_skin_skeleton" />
+                        <include layout="@layout/item_skin_skeleton" />
+                        <include layout="@layout/item_skin_skeleton" />
+                        <include layout="@layout/item_skin_skeleton" />
+                        <include layout="@layout/item_skin_skeleton" />
+                        <include layout="@layout/item_skin_skeleton" />
                     </GridLayout>
 
                 </com.facebook.shimmer.ShimmerFrameLayout>

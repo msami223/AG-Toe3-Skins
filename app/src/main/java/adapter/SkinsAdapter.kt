@@ -48,7 +48,7 @@ class SkinsAdapter(
             Glide.with(holder.itemView.context)
                 .load(skin.acf.previewImage1)
                 .centerCrop()
-                .placeholder(R.drawable.ic_launcher_background) // shows while loading
+
                 .into(holder.ivPreview)
         }
 

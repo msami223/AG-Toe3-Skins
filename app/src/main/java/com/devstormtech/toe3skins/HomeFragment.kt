@@ -35,9 +35,9 @@ import com.devstormtech.toe3skins.model.Skin
 import com.facebook.shimmer.ShimmerFrameLayout
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.firebase.messaging.FirebaseMessaging
-import retrofit2.Call
-import retrofit2.Callback
 import retrofit2.Response
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.Observer
 
 class HomeFragment : Fragment() {
 
@@ -54,15 +54,15 @@ class HomeFragment : Fragment() {
     private lateinit var adapter: SkinsAdapter
     private lateinit var swipeRefreshLayout: SwipeRefreshLayout
 
+    // ViewModel
+    private val viewModel: HomeViewModel by viewModels()
+
     // Notification Toggle
     private lateinit var notificationBanner: CardView
     private lateinit var notificationSwitch: SwitchCompat
 
     // FAB
     private lateinit var fabCreateSkin: com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-
-    private var allSkins: List<Skin> = emptyList()
-    private var currentFilterTruck = "All"
 
     private val NOTIFICATION_PERMISSION_CODE = 101
     private val PREFS_NAME = "TOE3SkinsPrefs"
@@ -91,7 +91,7 @@ class HomeFragment : Fragment() {
 
         // Setup retry button
         btnRetry.setOnClickListener {
-            fetchSkins(null, false)
+            viewModel.fetchSkins(false)
         }
 
         etSearch = view.findViewById(R.id.etHeaderSearch)
@@ -116,14 +116,17 @@ class HomeFragment : Fragment() {
 
         // 3. Notification Click
         // In Fragment, we check arguments or activity intent
+        // 3. Notification Click
+        // In Fragment, we check arguments or activity intent
         val notificationTarget = activity?.intent?.getStringExtra("TARGET_TAB")
         if (notificationTarget != null) {
-            currentFilterTruck = notificationTarget
+            viewModel.setFilter(notificationTarget)
             Toast.makeText(requireContext(), "Viewing $notificationTarget Skins", Toast.LENGTH_LONG).show()
         }
 
         // 4. Truck Filters
-        setupTruckFilters(currentFilterTruck)
+        setupTruckFilters("All") // Default to "All" initially
+
 
         // 5. Skins Grid
         val spanCount = resources.getInteger(R.integer.grid_columns)
@@ -137,7 +140,7 @@ class HomeFragment : Fragment() {
 
         // 6. Pull to Refresh
         swipeRefreshLayout.setOnRefreshListener {
-            fetchSkins(null, true)
+            viewModel.fetchSkins(true)
         }
 
         // 7. Tag Search
@@ -150,7 +153,7 @@ class HomeFragment : Fragment() {
         etSearch.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                applyFilters()
+                viewModel.setSearchQuery(s.toString())
             }
             override fun afterTextChanged(s: Editable?) {}
         })
@@ -159,7 +162,46 @@ class HomeFragment : Fragment() {
         btnSort.setOnClickListener { v -> showSortMenu(v) }
 
         // 10. Fetch Data
-        fetchSkins(tagQuery, false)
+        // 10. Observe ViewModel
+        observeViewModel()
+        
+        // Initial Fetch is done in ViewModel init, so we don't need to call it here unless we want to force something.
+        if (tagQuery != null) {
+             viewModel.setSearchQuery(tagQuery)
+        }
+    }
+    
+    private fun observeViewModel() {
+        viewModel.skins.observe(viewLifecycleOwner, Observer { skins ->
+            adapter.updateSkins(skins)
+            if (skins.isEmpty() && viewModel.errorMessage.value == null) {
+                 // It's empty but no error yet (loading or actually empty)
+            } else if (skins.isNotEmpty()) {
+                errorLayout.visibility = View.GONE
+                recyclerView.visibility = View.VISIBLE
+            }
+        })
+
+        viewModel.isLoading.observe(viewLifecycleOwner, Observer { isLoading ->
+            if (isLoading) {
+                if (!swipeRefreshLayout.isRefreshing) {
+                    shimmerContainer.startShimmer()
+                    shimmerContainer.visibility = View.VISIBLE
+                    recyclerView.visibility = View.GONE
+                    errorLayout.visibility = View.GONE
+                }
+            } else {
+                swipeRefreshLayout.isRefreshing = false
+                shimmerContainer.stopShimmer()
+                shimmerContainer.visibility = View.GONE
+            }
+        })
+
+        viewModel.errorMessage.observe(viewLifecycleOwner, Observer { error ->
+            if (error != null) {
+                showError(error)
+            }
+        })
     }
 
     private fun setupNotificationToggle() {
@@ -258,47 +300,7 @@ class HomeFragment : Fragment() {
         updateNotificationToggle()
     }
 
-    private fun fetchSkins(initialQuery: String?, isRefreshing: Boolean) {
-        if (!isRefreshing) {
-            shimmerContainer.startShimmer()
-            shimmerContainer.visibility = View.VISIBLE
-        }
-        recyclerView.visibility = View.GONE
-        errorLayout.visibility = View.GONE
-
-        RetrofitClient.instance.getSkins().enqueue(object : Callback<List<Skin>> {
-            override fun onResponse(call: Call<List<Skin>>, response: Response<List<Skin>>) {
-                if (isRefreshing) {
-                    swipeRefreshLayout.isRefreshing = false
-                } else {
-                    shimmerContainer.stopShimmer()
-                    shimmerContainer.visibility = View.GONE
-                }
-
-                if (response.isSuccessful && response.body() != null) {
-                    val skins = response.body()!!
-                    if (skins.isNotEmpty()) {
-                        allSkins = skins
-                        applyFilters()
-                    } else {
-                        showError("We are working hard on adding new skins! Check back soon.")
-                    }
-                } else {
-                    showError("Server Error: ${response.code()}")
-                }
-            }
-
-            override fun onFailure(call: Call<List<Skin>>, t: Throwable) {
-                if (isRefreshing) {
-                    swipeRefreshLayout.isRefreshing = false
-                } else {
-                    shimmerContainer.stopShimmer()
-                    shimmerContainer.visibility = View.GONE
-                }
-                showError("Network Error: ${t.message}")
-            }
-        })
-    }
+    // fetchSkins removed - logic moved to ViewModel
 
     private fun setupTruckFilters(initialSelection: String) {
         val trucks = listOf("All", "Stream", "Merieles", "Moon", "Volcano", "Dawn", "Fiora", "Renovate")
@@ -306,40 +308,14 @@ class HomeFragment : Fragment() {
         val initialIndex = trucks.indexOfFirst { it.equals(initialSelection, ignoreCase = true) }
         val startPos = if (initialIndex >= 0) initialIndex else 0
         val filterAdapter = TruckFilterAdapter(trucks) { selectedTruck ->
-            currentFilterTruck = selectedTruck
-            applyFilters()
+            viewModel.setFilter(selectedTruck)
         }
         filterAdapter.setSelected(startPos)
         rvTruckFilters.adapter = filterAdapter
         rvTruckFilters.scrollToPosition(startPos)
     }
 
-    private fun applyFilters() {
-        val query = etSearch.text.toString().lowercase()
-        val filteredList = allSkins.filter { skin ->
-            val matchesTruck = if (currentFilterTruck == "All") {
-                true
-            } else {
-                skin.acf.truckModel.lowercase().contains(currentFilterTruck.lowercase())
-            }
-            val matchesSearch = if (query.isEmpty()) {
-                true
-            } else {
-                skin.title.rendered.lowercase().contains(query) ||
-                        skin.acf.truckModel.lowercase().contains(query) ||
-                        skin.acf.creatorName.lowercase().contains(query) ||
-                        (skin.acf.tags?.any { it.lowercase().contains(query) } == true)
-            }
-            matchesTruck && matchesSearch
-        }
-        adapter.updateSkins(filteredList)
-        if (filteredList.isEmpty()) {
-            showError("We are working hard on adding new skins! Check back soon.")
-        } else {
-            errorLayout.visibility = View.GONE
-            recyclerView.visibility = View.VISIBLE
-        }
-    }
+    // applyFilters removed - logic moved to ViewModel
 
     private fun showSortMenu(view: View) {
         val popup = PopupMenu(requireContext(), view)
@@ -348,20 +324,16 @@ class HomeFragment : Fragment() {
         popup.menu.add(0, 3, 2, "Newest First")
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
-                1 -> sortSkinsBy { it.acf.downloadCount }
-                2 -> sortSkinsBy { it.acf.viewCount }
-                3 -> sortSkinsBy { it.id }
+                1 -> viewModel.sortSkins { it.acf.downloadCount }
+                2 -> viewModel.sortSkins { it.acf.viewCount }
+                3 -> viewModel.sortSkins { it.id }
             }
             true
         }
         popup.show()
     }
 
-    private fun sortSkinsBy(selector: (Skin) -> Int) {
-        val sortedList = allSkins.sortedByDescending(selector)
-        allSkins = sortedList
-        applyFilters()
-    }
+    // sortSkinsBy removed - logic moved to ViewModel
 
     private fun isInternetAvailable(): Boolean {
         val connectivityManager = requireContext().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -413,7 +385,7 @@ class HomeFragment : Fragment() {
      * to filter by a specific truck type
      */
     fun setInitialFilter(truckFilter: String) {
-        currentFilterTruck = truckFilter
+        viewModel.setFilter(truckFilter)
         
         // Only update UI if the view is already created
         if (view != null && ::rvTruckFilters.isInitialized) {
@@ -426,9 +398,7 @@ class HomeFragment : Fragment() {
             }
             
             // Reapply filters with the new truck selection
-            if (allSkins.isNotEmpty()) {
-                applyFilters()
-            }
+            viewModel.setFilter(truckFilter)
             
             Toast.makeText(requireContext(), "Viewing $truckFilter Skins", Toast.LENGTH_SHORT).show()
         }

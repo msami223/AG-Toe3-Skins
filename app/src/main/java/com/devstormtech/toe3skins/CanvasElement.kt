@@ -18,7 +18,9 @@ sealed class CanvasElement {
         var scaleX: Float = 1f,
         var scaleY: Float = 1f,
         var rotation: Float = 0f,
-        override var isSelected: Boolean = false
+        override var isSelected: Boolean = false,
+        var imagePath: String? = null,
+        var isExternal: Boolean = false
     ) : CanvasElement() {
         fun getBounds(): RectF {
             val halfWidth = (bitmap.width * scaleX) / 2
@@ -37,6 +39,7 @@ sealed class CanvasElement {
         var text: String,
         var textSize: Float = 96f,
         var textColor: Int,
+        var fontFamily: String = "sans-serif",
         override val matrix: Matrix = Matrix(),
         var x: Float = 0f,
         var y: Float = 0f,
@@ -60,5 +63,6 @@ sealed class CanvasElement {
 
 data class CanvasState(
     val elements: List<CanvasElement> = emptyList(),
-    val baseColor: Int? = null
+    val baseColor: Int? = null,
+    val baseBitmap: Bitmap? = null
 )
