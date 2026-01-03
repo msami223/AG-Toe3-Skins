@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.util.Log
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
@@ -108,49 +109,77 @@ class SkinMakerFragment : Fragment() {
             Toast.makeText(requireContext(), "No truck loaded!", Toast.LENGTH_SHORT).show()
             return
         }
-        
-        val bitmap = canvasView.generateHighResBitmap()
-        if (bitmap == null) {
-            Toast.makeText(requireContext(), "Failed to generate skin.", Toast.LENGTH_SHORT).show()
-            return
-        }
-        
-        val filename = "TOE3_Skin_${System.currentTimeMillis()}.png"
-        
-        val contentValues = ContentValues().apply {
-            put(MediaStore.Images.Media.DISPLAY_NAME, filename)
-            put(MediaStore.Images.Media.MIME_TYPE, "image/png")
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/TOE3Skins")
-                put(MediaStore.Images.Media.IS_PENDING, 1)
+
+        // Show Rewarded Ad first
+        AdManager.showRewardedAd(requireActivity()) { rewardEarned ->
+            if (rewardEarned) {
+                // User earned reward (or ad failed open) - Proceed with export
+                performSkinExport()
+            } else {
+                 Toast.makeText(requireContext(), "Watch ad to export!", Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    private fun performSkinExport() {
+        Toast.makeText(requireContext(), "Preparing export...", Toast.LENGTH_SHORT).show()
         
-        val resolver = requireContext().contentResolver
-        val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
-        
-        if (uri != null) {
+        // Run heavy export on background
+        Thread {
             try {
-                resolver.openOutputStream(uri).use { out ->
-                    if (out != null) {
-                         bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                val bitmap = canvasView.generateHighResBitmap()
+                if (bitmap == null) {
+                    requireActivity().runOnUiThread {
+                        Toast.makeText(requireContext(), "Failed to generate skin.", Toast.LENGTH_SHORT).show()
+                    }
+                    return@Thread
+                }
+                
+                val filename = "TOE3_Skin_${System.currentTimeMillis()}.png"
+                
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.Images.Media.DISPLAY_NAME, filename)
+                    put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/TOE3Skins")
+                        put(MediaStore.Images.Media.IS_PENDING, 1)
                     }
                 }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    contentValues.clear()
-                    contentValues.put(MediaStore.Images.Media.IS_PENDING, 0)
-                    resolver.update(uri, contentValues, null, null)
+                
+                val resolver = requireContext().contentResolver
+                val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+                
+                if (uri != null) {
+                    Log.d("SkinMaker", "URI Created: $uri")
+                    resolver.openOutputStream(uri).use { out ->
+                        if (out != null) {
+                             bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                        }
+                    }
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        contentValues.clear()
+                        contentValues.put(MediaStore.Images.Media.IS_PENDING, 0)
+                        resolver.update(uri, contentValues, null, null)
+                    }
+                    
+                    // Success UI
+                    requireActivity().runOnUiThread {
+                        Toast.makeText(requireContext(), "Saved to Gallery!", Toast.LENGTH_LONG).show() // LENGTH_LONG
+                        // Log Analytics
+                        AnalyticsManager.logSkinExported(currentTruck?.displayName ?: "Unknown")
+                    }
+                } else {
+                     requireActivity().runOnUiThread {
+                         Toast.makeText(requireContext(), "Failed to create file.", Toast.LENGTH_SHORT).show()
+                     }
                 }
-                Toast.makeText(requireContext(), "Saved to Gallery!", Toast.LENGTH_SHORT).show()
-                // Show ad after export
-                AdManager.onUserAction(requireActivity())
             } catch (e: Exception) {
                 e.printStackTrace()
-                Toast.makeText(requireContext(), "Export Failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                requireActivity().runOnUiThread {
+                    Toast.makeText(requireContext(), "Export Failed: ${e.message}", Toast.LENGTH_LONG).show()
+                }
             }
-        } else {
-             Toast.makeText(requireContext(), "Failed to create file.", Toast.LENGTH_SHORT).show()
-        }
+        }.start()
     }
 
     // Current loaded truck
@@ -672,6 +701,8 @@ class SkinMakerFragment : Fragment() {
                         currentProjectId = metadata.id
                         currentProjectName = metadata.name // Update local name
                         Toast.makeText(requireContext(), "Project saved!", Toast.LENGTH_SHORT).show()
+                        // Log Analytics
+                        AnalyticsManager.logProjectSaved(currentTruck?.displayName ?: "Unknown")
                         // Show ad after saving project
                         AdManager.onUserAction(requireActivity())
                     }

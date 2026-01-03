@@ -193,6 +193,9 @@ class DetailActivity : AppCompatActivity() {
             btnEditSkin.setOnClickListener {
                 downloadAndEditSkin(skin.acf.skinFileUrl, skin.title.rendered, skin.acf.truckModel)
             }
+            
+            // Log Screen View
+            AnalyticsManager.logScreenView("Detail_Screen", "DetailActivity")
         }
     }
 
@@ -375,6 +378,19 @@ class DetailActivity : AppCompatActivity() {
             Toast.makeText(this, "Link missing", Toast.LENGTH_SHORT).show()
             return
         }
+
+        // Show Rewarded Ad first
+        AdManager.showRewardedAd(this) { rewardEarned ->
+            if (rewardEarned) {
+                // User earned reward - Proceed with download
+                performDownload(url, title)
+            } else {
+                 Toast.makeText(this, "Watch ad to download!", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun performDownload(url: String, title: String) {
         try {
             val request = DownloadManager.Request(Uri.parse(url))
             request.setTitle("Downloading $title")
@@ -395,8 +411,9 @@ class DetailActivity : AppCompatActivity() {
             
             Toast.makeText(this, "Download Started...", Toast.LENGTH_SHORT).show()
             
-            // Show ad after starting download
-            AdManager.onUserAction(this)
+            // Log Analytics
+            AnalyticsManager.logSkinDownloaded(title, currentSkin?.acf?.truckModel ?: "Unknown")
+            
         } catch (e: Exception) {
             Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
         }

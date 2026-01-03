@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
 }
 
 android {
@@ -12,8 +13,8 @@ android {
         applicationId = "com.devstormtech.toe3skins"
         minSdk = 24
         targetSdk = 35
-        versionCode = 7
-        versionName = "1.6"
+        versionCode = 10
+        versionName = "1.9"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -43,6 +44,10 @@ android {
     }
     kotlinOptions {
         jvmTarget = "11"
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 }
 
@@ -75,6 +80,8 @@ dependencies {
     // Firebase (The Postman)
     implementation(platform("com.google.firebase:firebase-bom:32.8.0"))
     implementation("com.google.firebase:firebase-messaging")
+    implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-crashlytics")
 
     // SPLASH SCREEN
     implementation("androidx.core:core-splashscreen:1.0.1")
@@ -94,6 +101,7 @@ dependencies {
     // Google AdMob
     implementation("com.google.android.gms:play-services-ads:23.0.0")
 
-    // Yandex Mobile Ads SDK (Core)
-    implementation("com.yandex.android:mobileads:7.0.1")
+    // Yandex Mobile Ads SDK (Core) & AdMob Adapter
+    implementation("com.yandex.android:mobileads:7.18.0")
+    implementation("com.yandex.ads.adapter:admob-mobileads:7.18.0.0")
 }

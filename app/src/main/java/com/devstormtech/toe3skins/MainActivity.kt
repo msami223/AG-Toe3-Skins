@@ -107,7 +107,28 @@ class MainActivity : AppCompatActivity() {
         checkForUpdate()
 
         // Initialize AdManager
-        AdManager.initialize(this)
+        // Initialize AdManager - Moved to ConsentManager callback below
+        
+        // Initialize Analytics
+        AnalyticsManager.initialize(this)
+        AnalyticsManager.logAppOpen()
+        
+        // GDPR / Consent Gathering
+        ConsentManager.gatherConsent(this) { canRequestAds ->
+            if (canRequestAds) {
+                Log.d("MainActivity", "Consent gathered, initializing Ads")
+                
+                // Initialize AdMob
+                AdManager.initialize(this)
+                
+                // Initialize Yandex Ads (Required for Mediation)
+                com.yandex.mobile.ads.common.MobileAds.initialize(this) { 
+                     Log.d("YandexAds", "Yandex Mobile Ads initialized")
+                }
+            } else {
+                 Log.d("MainActivity", "Cannot request ads (Consent not granted or error)")
+            }
+        }
 
         setupProjectLoading()
         setupBottomNavigation()
@@ -187,15 +208,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
     
-    override fun onNewIntent(intent: Intent?) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         // Handle notification click when app is already running
 
-        intent?.let { 
-            handleNotificationIntent(it)
-            handleNavigationIntent(it)
-            handleEditSkinIntent(it)
-        }
+        handleNotificationIntent(intent)
+        handleNavigationIntent(intent)
+        handleEditSkinIntent(intent)
     }
     
     private fun handleNotificationIntent(intent: Intent) {
