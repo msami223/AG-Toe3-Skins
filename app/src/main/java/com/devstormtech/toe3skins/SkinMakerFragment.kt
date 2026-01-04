@@ -383,7 +383,7 @@ class SkinMakerFragment : Fragment() {
     }
 
     private fun showColorPicker() {
-        val dialog = ColorPickerDialog(canvasView.baseColor ?: Color.WHITE) { color ->
+        val dialog = ColorPickerDialog.newInstance(canvasView.baseColor ?: Color.WHITE) { color ->
             saveState()
             canvasView.baseColor = color
             canvasView.invalidate()
@@ -410,7 +410,7 @@ class SkinMakerFragment : Fragment() {
     }
 
     private fun showTextEditor() {
-        val dialog = TextEditorDialog { text, size, color, font ->
+        val dialog = TextEditorDialog.newInstance { text, size, color, font ->
             saveState()
             addText(text, size, color, font)
         }

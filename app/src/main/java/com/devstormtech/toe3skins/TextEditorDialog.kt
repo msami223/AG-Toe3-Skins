@@ -14,21 +14,48 @@ import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
 import com.google.android.material.textfield.TextInputEditText
 
-class TextEditorDialog(
-    private val existingText: String? = null,
-    private val existingSize: Float? = null,
-    private val existingColor: Int? = null,
-    private val existingFont: String? = null,
-    private val onTextSaved: (String, Float, Int, String) -> Unit
-) : DialogFragment() {
+class TextEditorDialog : DialogFragment() {
 
-    private var textSize = existingSize ?: 48f
-    private var textColor = existingColor ?: Color.WHITE
-    private var fontFamily = existingFont ?: "sans-serif"
+    private var textSize = 48f
+    private var textColor = Color.WHITE
+    private var fontFamily = "sans-serif"
+    private var onTextSaved: ((String, Float, Int, String) -> Unit)? = null
+
+    companion object {
+        private const val ARG_EXISTING_TEXT = "existing_text"
+        private const val ARG_EXISTING_SIZE = "existing_size"
+        private const val ARG_EXISTING_COLOR = "existing_color"
+        private const val ARG_EXISTING_FONT = "existing_font"
+
+        fun newInstance(
+            existingText: String? = null,
+            existingSize: Float? = null,
+            existingColor: Int? = null,
+            existingFont: String? = null,
+            onTextSaved: (String, Float, Int, String) -> Unit
+        ): TextEditorDialog {
+            return TextEditorDialog().apply {
+                arguments = Bundle().apply {
+                    existingText?.let { putString(ARG_EXISTING_TEXT, it) }
+                    existingSize?.let { putFloat(ARG_EXISTING_SIZE, it) }
+                    existingColor?.let { putInt(ARG_EXISTING_COLOR, it) }
+                    existingFont?.let { putString(ARG_EXISTING_FONT, it) }
+                }
+                this.onTextSaved = onTextSaved
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setStyle(STYLE_NO_FRAME, android.R.style.Theme_DeviceDefault_Dialog)
+        
+        // Restore from arguments
+        arguments?.let { args ->
+            textSize = args.getFloat(ARG_EXISTING_SIZE, 48f)
+            textColor = args.getInt(ARG_EXISTING_COLOR, Color.WHITE)
+            fontFamily = args.getString(ARG_EXISTING_FONT, "sans-serif")
+        }
     }
 
     override fun onCreateView(
@@ -66,7 +93,7 @@ class TextEditorDialog(
         val colorBlack: View = view.findViewById(R.id.colorBlack)
 
         // Initialize with existing values if editing
-        existingText?.let { etText.setText(it) }
+        arguments?.getString(ARG_EXISTING_TEXT)?.let { etText.setText(it) }
         seekSize.progress = ((textSize - 20) / 1f).toInt().coerceIn(0, 100)
         tvSizeValue.text = "${textSize.toInt()}sp"
         
@@ -125,7 +152,7 @@ class TextEditorDialog(
 
         // Custom color picker
         btnCustomColor.setOnClickListener {
-            val colorPicker = ColorPickerDialog(textColor) { selectedColor ->
+            val colorPicker = ColorPickerDialog.newInstance(textColor) { selectedColor ->
                 setTextColor(selectedColor, tvPreview)
             }
             colorPicker.show(childFragmentManager, "ColorPicker")
@@ -136,7 +163,7 @@ class TextEditorDialog(
         btnSave.setOnClickListener {
             val text = etText.text?.toString() ?: ""
             if (text.isNotEmpty()) {
-                onTextSaved(text, textSize, textColor, fontFamily)
+                onTextSaved?.invoke(text, textSize, textColor, fontFamily)
                 dismiss()
             }
         }

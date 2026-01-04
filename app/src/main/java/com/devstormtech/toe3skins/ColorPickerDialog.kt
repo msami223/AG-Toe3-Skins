@@ -11,16 +11,32 @@ import android.widget.TextView
 import androidx.fragment.app.DialogFragment
 import com.google.android.material.button.MaterialButton
 
-class ColorPickerDialog(
-    private val currentColor: Int,
-    private val onColorSelected: (Int) -> Unit
-) : DialogFragment() {
+class ColorPickerDialog : DialogFragment() {
 
-    private var selectedColor = currentColor
+    private var selectedColor = Color.WHITE
+    private var onColorSelected: ((Int) -> Unit)? = null
+
+    companion object {
+        private const val ARG_CURRENT_COLOR = "current_color"
+
+        fun newInstance(
+            currentColor: Int,
+            onColorSelected: (Int) -> Unit
+        ): ColorPickerDialog {
+            return ColorPickerDialog().apply {
+                arguments = Bundle().apply {
+                    putInt(ARG_CURRENT_COLOR, currentColor)
+                }
+                this.onColorSelected = onColorSelected
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setStyle(STYLE_NO_FRAME, android.R.style.Theme_DeviceDefault_Dialog)
+        
+        selectedColor = arguments?.getInt(ARG_CURRENT_COLOR, Color.WHITE) ?: Color.WHITE
     }
 
     override fun onCreateView(
@@ -52,9 +68,9 @@ class ColorPickerDialog(
         val quickBlack: View = view.findViewById(R.id.quickBlack)
 
         // Initialize with current color
-        colorWheel.setColor(currentColor)
+        colorWheel.setColor(selectedColor)
         seekBrightness.progress = (colorWheel.getBrightness() * 100).toInt()
-        updatePreview(colorPreview, tvHexCode, currentColor)
+        updatePreview(colorPreview, tvHexCode, selectedColor)
 
         // Color wheel callback
         colorWheel.onColorChanged = { color ->
@@ -86,7 +102,7 @@ class ColorPickerDialog(
         // Action buttons
         btnCancel.setOnClickListener { dismiss() }
         btnApply.setOnClickListener {
-            onColorSelected(selectedColor)
+            onColorSelected?.invoke(selectedColor)
             dismiss()
         }
     }
