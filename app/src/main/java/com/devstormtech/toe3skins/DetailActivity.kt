@@ -57,6 +57,9 @@ class DetailActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_detail)
+        
+        // Track user action for interstitial ads (opening skin detail counts as 1 action)
+        AdManager.onUserAction(this)
 
         // 1. SETUP HEADER
         val btnBack: ImageView = findViewById(R.id.btnHeaderBack)

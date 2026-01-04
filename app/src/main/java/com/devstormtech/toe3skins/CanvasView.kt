@@ -616,14 +616,28 @@ class CanvasView @JvmOverloads constructor(
                     
                     android.util.Log.d("SaveDebug", "Sticker: screen(${element.x}, ${element.y}) -> original($tx, $ty) scale($sx, $sy)")
                     
+                    // FIX: Convert hardware bitmaps to software to prevent crash
+                    // "Software rendering doesn't support hardware bitmaps"
+                    val safeBitmap = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O 
+                        && element.bitmap.config == Bitmap.Config.HARDWARE) {
+                        element.bitmap.copy(Bitmap.Config.ARGB_8888, false)
+                    } else {
+                        element.bitmap
+                    }
+                    
+                    if (safeBitmap == null) {
+                        android.util.Log.e("SaveDebug", "Failed to convert hardware bitmap, skipping sticker")
+                        return@forEach
+                    }
+                    
                     canvas.save()
                     canvas.translate(tx, ty)
                     canvas.rotate(element.rotation)
                     canvas.scale(sx, sy)
                     canvas.drawBitmap(
-                        element.bitmap,
-                        -element.bitmap.width / 2f,
-                        -element.bitmap.height / 2f,
+                        safeBitmap,
+                        -safeBitmap.width / 2f,
+                        -safeBitmap.height / 2f,
                         stickerPaint
                     )
                     canvas.restore()

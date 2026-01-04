@@ -257,9 +257,12 @@ class HomeFragment : Fragment() {
     private fun subscribeToNotifications() {
         FirebaseMessaging.getInstance().subscribeToTopic("all")
             .addOnSuccessListener {
+                // FIX: Check if fragment is still attached before accessing context
+                if (!isAdded || context == null) return@addOnSuccessListener
                 Toast.makeText(requireContext(), "✓ Notifications Enabled", Toast.LENGTH_SHORT).show()
             }
             .addOnFailureListener {
+                if (!isAdded || context == null) return@addOnFailureListener
                 Toast.makeText(requireContext(), "Failed to enable notifications", Toast.LENGTH_SHORT).show()
                 updateNotificationToggle()
             }
@@ -268,9 +271,12 @@ class HomeFragment : Fragment() {
     private fun unsubscribeFromNotifications() {
         FirebaseMessaging.getInstance().unsubscribeFromTopic("all")
             .addOnSuccessListener {
+                // FIX: Check if fragment is still attached before accessing context
+                if (!isAdded || context == null) return@addOnSuccessListener
                 Toast.makeText(requireContext(), "✗ Notifications Disabled", Toast.LENGTH_SHORT).show()
             }
             .addOnFailureListener {
+                if (!isAdded || context == null) return@addOnFailureListener
                 Toast.makeText(requireContext(), "Failed to disable notifications", Toast.LENGTH_SHORT).show()
                 updateNotificationToggle()
             }

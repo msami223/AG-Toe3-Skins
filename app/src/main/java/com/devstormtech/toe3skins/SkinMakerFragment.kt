@@ -164,9 +164,16 @@ class SkinMakerFragment : Fragment() {
                     
                     // Success UI
                     requireActivity().runOnUiThread {
+                        if (!isAdded || context == null) return@runOnUiThread
+                        
                         Toast.makeText(requireContext(), "Saved to Gallery!", Toast.LENGTH_LONG).show() // LENGTH_LONG
                         // Log Analytics
                         AnalyticsManager.logSkinExported(currentTruck?.displayName ?: "Unknown")
+                        
+                        // Show interstitial ad after successful export (after rewarded ad)
+                        if (activity != null) {
+                            AdManager.onUserAction(requireActivity())
+                        }
                     }
                 } else {
                      requireActivity().runOnUiThread {
@@ -697,14 +704,25 @@ class SkinMakerFragment : Fragment() {
                         thumbnail = thumbnail
                     )
                     
+                    // FIX: Check if fragment is still attached before accessing activity/context
+                    if (!isAdded || activity == null) {
+                        android.util.Log.w("SkinMakerFragment", "Fragment detached, skipping UI update")
+                        return@Thread
+                    }
+                    
                     requireActivity().runOnUiThread {
+                        // Double-check after posting to UI thread
+                        if (!isAdded || context == null) return@runOnUiThread
+                        
                         currentProjectId = metadata.id
                         currentProjectName = metadata.name // Update local name
                         Toast.makeText(requireContext(), "Project saved!", Toast.LENGTH_SHORT).show()
                         // Log Analytics
                         AnalyticsManager.logProjectSaved(currentTruck?.displayName ?: "Unknown")
                         // Show ad after saving project
-                        AdManager.onUserAction(requireActivity())
+                        if (activity != null) {
+                            AdManager.onUserAction(requireActivity())
+                        }
                     }
                 }.start()
             }

@@ -136,12 +136,9 @@ class MainActivity : AppCompatActivity() {
         // Hide skin editor tab if not yet activated
         val isSkinEditorActivated = prefs.getBoolean(KEY_SKIN_EDITOR_ACTIVATED, false)
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_navigation)
-        bottomNav.menu.findItem(R.id.nav_skin_maker).isVisible = isSkinEditorActivated
+        bottomNav?.menu?.findItem(R.id.nav_skin_maker)?.isVisible = isSkinEditorActivated
         
-        // Handle notification click intent
-        handleNotificationIntent(intent)
-        // Handle notification click intent
-        // Handle notification click intent
+        // Handle notification click intent (single call - removed duplicates)
         handleNotificationIntent(intent)
         handleNavigationIntent(intent)
         handleEditSkinIntent(intent)
@@ -273,51 +270,69 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupBottomNavigation() {
+        // FIX: Add null safety check for BottomNavigationView crash
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_navigation)
+        if (bottomNav == null) {
+            Log.e("MainActivity", "BottomNavigationView not found in layout!")
+            return
+        }
+        
         bottomNav.setOnItemSelectedListener { item ->
-            // Check if fragments are attached before proceeding
-            if (!homeFragment.isAdded || !skinMakerFragment.isAdded || !settingsFragment.isAdded) {
-                return@setOnItemSelectedListener false
-            }
-            
-            val transaction = supportFragmentManager.beginTransaction()
-            
-            // Hide all fragments first
-            transaction.hide(homeFragment)
-            transaction.hide(skinMakerFragment)
-            transaction.hide(settingsFragment)
-            transaction.hide(myProjectsFragment)
-            
-            when (item.itemId) {
-                R.id.nav_home -> {
-                    transaction.show(homeFragment)
-                    transaction.commitNowAllowingStateLoss()
-                    true
+            // FIX: Wrap in try-catch to prevent crashes during rapid state changes
+            try {
+                // Check if fragments are initialized and attached before proceeding
+                if (!::homeFragment.isInitialized || !::skinMakerFragment.isInitialized || 
+                    !::settingsFragment.isInitialized || !::myProjectsFragment.isInitialized) {
+                    Log.w("MainActivity", "Fragments not yet initialized")
+                    return@setOnItemSelectedListener false
                 }
-                R.id.nav_skin_maker -> {
-                    if (skinMakerFragment.isProjectLoaded()) {
-                        transaction.show(skinMakerFragment)
+                
+                if (!homeFragment.isAdded || !skinMakerFragment.isAdded || !settingsFragment.isAdded) {
+                    return@setOnItemSelectedListener false
+                }
+                
+                val transaction = supportFragmentManager.beginTransaction()
+                
+                // Hide all fragments first
+                transaction.hide(homeFragment)
+                transaction.hide(skinMakerFragment)
+                transaction.hide(settingsFragment)
+                transaction.hide(myProjectsFragment)
+                
+                when (item.itemId) {
+                    R.id.nav_home -> {
+                        transaction.show(homeFragment)
                         transaction.commitNowAllowingStateLoss()
                         true
-                    } else {
-                        // Project not loaded, force selection
-                        switchToSkinEditor()
-                        false // Don't select the tab yet
+                    }
+                    R.id.nav_skin_maker -> {
+                        if (skinMakerFragment.isProjectLoaded()) {
+                            transaction.show(skinMakerFragment)
+                            transaction.commitNowAllowingStateLoss()
+                            true
+                        } else {
+                            // Project not loaded, force selection
+                            switchToSkinEditor()
+                            false // Don't select the tab yet
+                        }
+                    }
+                    R.id.nav_settings -> {
+                        transaction.show(settingsFragment)
+                        transaction.commitNowAllowingStateLoss()
+                        true
+                    }
+                    R.id.nav_my_projects -> {
+                        transaction.show(myProjectsFragment)
+                        transaction.commitNowAllowingStateLoss()
+                        true
+                    }
+                    else -> {
+                        false
                     }
                 }
-                R.id.nav_settings -> {
-                    transaction.show(settingsFragment)
-                    transaction.commitNowAllowingStateLoss()
-                    true
-                }
-                R.id.nav_my_projects -> {
-                    transaction.show(myProjectsFragment)
-                    transaction.commitNowAllowingStateLoss()
-                    true
-                }
-                else -> {
-                    false
-                }
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error in bottom navigation: ${e.message}")
+                false
             }
         }
     }
@@ -351,6 +366,9 @@ class MainActivity : AppCompatActivity() {
             val (truck, state, name) = projectManager.loadProject(projectId)
             
             if (truck != null) {
+                // Track user action for interstitial ads (loading project = 1 action)
+                AdManager.onUserAction(this)
+                
                 // Switch to SkinMakerFragment
                 val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_navigation)
                 
