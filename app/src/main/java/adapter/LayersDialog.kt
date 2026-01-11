@@ -12,11 +12,26 @@ import androidx.recyclerview.widget.RecyclerView
 import com.devstormtech.toe3skins.adapter.LayerAdapter
 import com.google.android.material.button.MaterialButton
 
-class LayersDialog(
-    private val layers: List<CanvasElement>,
-    private val onLayerSelected: (CanvasElement) -> Unit,
-    private val onLayerDeleted: (CanvasElement) -> Unit
-) : DialogFragment() {
+class LayersDialog : DialogFragment() {
+
+    // Store data as instance variables
+    private var layers: List<CanvasElement>? = null
+    private var onLayerSelected: ((CanvasElement) -> Unit)? = null
+    private var onLayerDeleted: ((CanvasElement) -> Unit)? = null
+
+    companion object {
+        fun newInstance(
+            layers: List<CanvasElement>,
+            onLayerSelected: (CanvasElement) -> Unit,
+            onLayerDeleted: (CanvasElement) -> Unit
+        ): LayersDialog {
+            return LayersDialog().apply {
+                this.layers = layers
+                this.onLayerSelected = onLayerSelected
+                this.onLayerDeleted = onLayerDeleted
+            }
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -33,7 +48,9 @@ class LayersDialog(
         val btnClose: MaterialButton = view.findViewById(R.id.btnCloseLayers)
         val tvEmpty: TextView = view.findViewById(R.id.tvEmptyLayers)
 
-        if (layers.isEmpty()) {
+        val layersList = layers ?: emptyList()
+
+        if (layersList.isEmpty()) {
             recyclerView.visibility = View.GONE
             tvEmpty.visibility = View.VISIBLE
         } else {
@@ -42,13 +59,13 @@ class LayersDialog(
 
             recyclerView.layoutManager = LinearLayoutManager(context)
             val adapter = LayerAdapter(
-                layers = layers,
+                layers = layersList,
                 onLayerClick = { layer ->
-                    onLayerSelected(layer)
+                    onLayerSelected?.invoke(layer)
                     dismiss()
                 },
                 onDeleteClick = { layer ->
-                    onLayerDeleted(layer)
+                    onLayerDeleted?.invoke(layer)
                     dismiss()
                 }
             )

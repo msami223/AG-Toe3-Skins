@@ -19,10 +19,11 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 
-class StickerBottomSheet(
-    private val onLocalStickerSelected: (Int) -> Unit,
-    private val onRemoteStickerSelected: (String) -> Unit
-) : BottomSheetDialogFragment() {
+class StickerBottomSheet : BottomSheetDialogFragment() {
+
+    // Callbacks stored as instance variables
+    private var onLocalStickerSelected: ((Int) -> Unit)? = null
+    private var onRemoteStickerSelected: ((String) -> Unit)? = null
 
     // Local drawable stickers with names for search
     private val localStickersWithNames = listOf(
@@ -46,6 +47,18 @@ class StickerBottomSheet(
     private lateinit var tvNoResultsMessage: android.widget.TextView
     private var allStickers = mutableListOf<Pair<StickerItem, String>>()
     private var filteredStickers = mutableListOf<StickerItem>()
+
+    companion object {
+        fun newInstance(
+            onLocalStickerSelected: (Int) -> Unit,
+            onRemoteStickerSelected: (String) -> Unit
+        ): StickerBottomSheet {
+            return StickerBottomSheet().apply {
+                this.onLocalStickerSelected = onLocalStickerSelected
+                this.onRemoteStickerSelected = onRemoteStickerSelected
+            }
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -112,10 +125,10 @@ class StickerBottomSheet(
         val adapter = StickerAdapter(filteredStickers) { stickerItem ->
             when (stickerItem) {
                 is StickerItem.Local -> {
-                    onLocalStickerSelected(stickerItem.resourceId)
+                    onLocalStickerSelected?.invoke(stickerItem.resourceId)
                 }
                 is StickerItem.Remote -> {
-                    onRemoteStickerSelected(stickerItem.url)
+                    onRemoteStickerSelected?.invoke(stickerItem.url)
                 }
             }
             dismiss()
@@ -127,7 +140,8 @@ class StickerBottomSheet(
         RetrofitClient.instance.getStickers().enqueue(object : Callback<List<Sticker>> {
             override fun onResponse(call: Call<List<Sticker>>, response: Response<List<Sticker>>) {
                 if (response.isSuccessful && response.body() != null) {
-                    val wpStickers = response.body()!!
+                    // FIXED: Safe null check instead of !!
+                    val wpStickers = response.body() ?: return
                     
                     // Convert WordPress stickers to StickerItem.Remote with names
                     val remoteStickers = wpStickers.mapNotNull { sticker ->

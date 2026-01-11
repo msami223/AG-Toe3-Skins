@@ -12,9 +12,10 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 
-class TruckSelectionDialog(
-    private val onTruckSelected: (TruckModel) -> Unit
-) : BottomSheetDialogFragment() {
+class TruckSelectionDialog : BottomSheetDialogFragment() {
+
+    // Callback stored as a variable instead of constructor parameter
+    private var onTruckSelected: ((TruckModel) -> Unit)? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -31,8 +32,22 @@ class TruckSelectionDialog(
         recyclerView.layoutManager = GridLayoutManager(requireContext(), 2)
         recyclerView.setItemViewCacheSize(14) // Cache all truck items
         recyclerView.adapter = TruckAdapter(TruckModel.getAllTrucks()) { truck ->
-            onTruckSelected(truck)
+            onTruckSelected?.invoke(truck)
             dismiss()
+        }
+    }
+
+    // Internal method to set the callback (called from companion object)
+    internal fun setTruckSelectedCallback(callback: (TruckModel) -> Unit) {
+        this.onTruckSelected = callback
+    }
+
+    companion object {
+        // Factory method to create instance - THIS IS THE CORRECT WAY
+        fun newInstance(onTruckSelected: (TruckModel) -> Unit): TruckSelectionDialog {
+            return TruckSelectionDialog().apply {
+                setTruckSelectedCallback(onTruckSelected)
+            }
         }
     }
 

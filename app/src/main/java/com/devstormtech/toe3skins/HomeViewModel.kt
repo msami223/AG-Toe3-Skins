@@ -38,7 +38,7 @@ class HomeViewModel : ViewModel() {
             override fun onResponse(call: Call<List<Skin>>, response: Response<List<Skin>>) {
                 _isLoading.value = false
                 if (response.isSuccessful && response.body() != null) {
-                    val skinsList = response.body()!!
+                    val skinsList = response.body() ?: return
                     if (skinsList.isNotEmpty()) {
                         allSkinsCache = skinsList
                         applyFilters()
@@ -75,15 +75,15 @@ class HomeViewModel : ViewModel() {
             val matchesTruck = if (currentFilterTruck == "All") {
                 true
             } else {
-                skin.acf.truckModel.lowercase().contains(currentFilterTruck.lowercase())
+                skin.acf.truckModel?.lowercase()?.contains(currentFilterTruck.lowercase()) == true
             }
             val matchesSearch = if (query.isEmpty()) {
                 true
             } else {
-                skin.title.rendered.lowercase().contains(query) ||
-                        skin.acf.truckModel.lowercase().contains(query) ||
-                        skin.acf.creatorName.lowercase().contains(query) ||
-                        (skin.acf.tags?.any { it.lowercase().contains(query) } == true)
+                skin.title.rendered?.lowercase()?.contains(query) == true ||
+                        skin.acf.truckModel?.lowercase()?.contains(query) == true ||
+                        skin.acf.creatorName?.lowercase()?.contains(query) == true ||
+                        (skin.acf.tags?.any { it?.lowercase()?.contains(query) == true } == true)
             }
             matchesTruck && matchesSearch
         }

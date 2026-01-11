@@ -339,7 +339,7 @@ class MainActivity : AppCompatActivity() {
 
     fun switchToSkinEditor() {
         // Show truck selection dialog first
-        val dialog = TruckSelectionDialog { selectedTruck ->
+        val dialog = TruckSelectionDialog.newInstance { selectedTruck ->
             // Mark skin editor as activated
             val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             if (!prefs.getBoolean(KEY_SKIN_EDITOR_ACTIVATED, false)) {

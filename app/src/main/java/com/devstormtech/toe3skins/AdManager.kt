@@ -46,10 +46,7 @@ object AdManager {
     private const val MAX_RETRY_ATTEMPTS = 3
     private val mainHandler = Handler(Looper.getMainLooper())
     
-    // Hybrid counter: Track both actions AND time
-    private var actionCounter = 0
-    private const val ACTIONS_BETWEEN_ADS = 3 // Hybrid: 3 actions + 30-60s cooldown
-    private var lastInterstitialTime = 0L // Track last interstitial show time
+    // Removed: No time limits or action counters - show ad on every user action
     
     // Context reference for reloading
     private var appContext: Context? = null
@@ -299,8 +296,6 @@ object AdManager {
             Log.d(TAG, "Showing rewarded ad...")
             ad.show(activity) { rewardItem ->
                 Log.d(TAG, "User earned reward: ${rewardItem.amount} ${rewardItem.type}")
-                // Reset interstitial counter to prevent double-ad annoyance
-                actionCounter = 0
                 onUserEarnedReward(true)
             }
         } else {
@@ -312,40 +307,16 @@ object AdManager {
     }
 
     /**
-     * Increment action counter and show interstitial ad if threshold reached.
-     * Uses HYBRID approach: requires BOTH action count AND time elapsed.
-     * Interstitials will NOT show if we just showed a Rewarded Ad (counter reset).
+     * Show interstitial ad on every user action (e.g., opening a skin).
+     * No cooldowns or action counts - immediate display.
      */
     fun onUserAction(activity: Activity) {
-        actionCounter++
-        val currentTime = System.currentTimeMillis()
-        val timeSinceLastAd = currentTime - lastInterstitialTime
+        Log.d(TAG, "User action triggered, attempting to show interstitial...")
         
-        // Random cooldown between 30-60 seconds (in milliseconds)
-        val minCooldown = 30_000L // 30 seconds
-        val maxCooldown = 60_000L // 60 seconds
-        val randomCooldown = minCooldown + (Math.random() * (maxCooldown - minCooldown)).toLong()
-        
-        Log.d(TAG, "User action #$actionCounter (need $ACTIONS_BETWEEN_ADS), " +
-                "time since last ad: ${timeSinceLastAd/1000}s (need ${randomCooldown/1000}s)")
-        
-        // HYBRID CHECK: Both conditions must be met
-        if (actionCounter >= ACTIONS_BETWEEN_ADS && timeSinceLastAd >= randomCooldown) {
-            Log.d(TAG, "Both thresholds met, attempting to show interstitial...")
-            if (showInterstitialAd(activity)) {
-                actionCounter = 0
-                lastInterstitialTime = currentTime
-                Log.d(TAG, "Interstitial shown, counters reset")
-            } else {
-                Log.d(TAG, "Interstitial not available, will try again")
-            }
+        if (showInterstitialAd(activity)) {
+            Log.d(TAG, "Interstitial shown successfully")
         } else {
-            if (actionCounter < ACTIONS_BETWEEN_ADS) {
-                Log.d(TAG, "Need ${ACTIONS_BETWEEN_ADS - actionCounter} more actions")
-            }
-            if (timeSinceLastAd < randomCooldown) {
-                Log.d(TAG, "Need ${(randomCooldown - timeSinceLastAd)/1000}s more cooldown")
-            }
+            Log.d(TAG, "Interstitial not available yet")
         }
     }
     

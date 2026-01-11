@@ -445,7 +445,7 @@ class DetailActivity : AppCompatActivity() {
         RetrofitClient.instance.getSkins().enqueue(object : Callback<List<Skin>> {
             override fun onResponse(call: Call<List<Skin>>, response: Response<List<Skin>>) {
                 if (response.isSuccessful && response.body() != null) {
-                    val allSkins = response.body()!!
+                    val allSkins = response.body() ?: return
                     
                     // Filter: same truck model, exclude current skin, limit to 6
                     val relatedSkins = allSkins

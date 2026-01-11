@@ -169,11 +169,6 @@ class SkinMakerFragment : Fragment() {
                         Toast.makeText(requireContext(), "Saved to Gallery!", Toast.LENGTH_LONG).show() // LENGTH_LONG
                         // Log Analytics
                         AnalyticsManager.logSkinExported(currentTruck?.displayName ?: "Unknown")
-                        
-                        // Show interstitial ad after successful export (after rewarded ad)
-                        if (activity != null) {
-                            AdManager.onUserAction(requireActivity())
-                        }
                     }
                 } else {
                      requireActivity().runOnUiThread {
@@ -183,6 +178,7 @@ class SkinMakerFragment : Fragment() {
             } catch (e: Exception) {
                 e.printStackTrace()
                 requireActivity().runOnUiThread {
+                    if (!isAdded || context == null) return@runOnUiThread
                     Toast.makeText(requireContext(), "Export Failed: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             }
@@ -297,37 +293,65 @@ class SkinMakerFragment : Fragment() {
     }
 
     private fun loadTruckTemplate(templateResource: Int = R.drawable.template_stream_st) {
-        // Load original FULL resolution for saving (game-ready texture)
-        val originalOptions = BitmapFactory.Options().apply {
-            inJustDecodeBounds = false
-            inScaled = false
-        }
-        canvasView.originalBitmap = BitmapFactory.decodeResource(resources, templateResource, originalOptions)
-        
-        // Load downsampled version for screen display (performance)
-        val options = BitmapFactory.Options().apply {
-            inJustDecodeBounds = true
-            inScaled = false
-        }
-        BitmapFactory.decodeResource(resources, templateResource, options)
+        try {
+            // Load original FULL resolution for saving (game-ready texture)
+            val originalOptions = BitmapFactory.Options().apply {
+                inJustDecodeBounds = false
+                inScaled = false
+            }
+            canvasView.originalBitmap = BitmapFactory.decodeResource(resources, templateResource, originalOptions)
+            
+            // Load downsampled version for screen display (performance)
+            val options = BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+                inScaled = false
+            }
+            BitmapFactory.decodeResource(resources, templateResource, options)
 
-        val imageWidth = options.outWidth
-        val imageHeight = options.outHeight
-        val maxDimension = 2048
-        
-        var calculatedSampleSize = 1
-        while (imageWidth / calculatedSampleSize > maxDimension || imageHeight / calculatedSampleSize > maxDimension) {
-            calculatedSampleSize *= 2
-        }
+            val imageWidth = options.outWidth
+            val imageHeight = options.outHeight
+            val maxDimension = 2048
+            
+            var calculatedSampleSize = 1
+            while (imageWidth / calculatedSampleSize > maxDimension || imageHeight / calculatedSampleSize > maxDimension) {
+                calculatedSampleSize *= 2
+            }
 
-        val decodeOptions = BitmapFactory.Options().apply {
-            inJustDecodeBounds = false
-            inSampleSize = calculatedSampleSize
-            inScaled = false
-        }
+            val decodeOptions = BitmapFactory.Options().apply {
+                inJustDecodeBounds = false
+                inSampleSize = calculatedSampleSize
+                inScaled = false
+            }
 
-        canvasView.baseBitmap = BitmapFactory.decodeResource(resources, templateResource, decodeOptions)
-        canvasView.invalidate()
+            canvasView.baseBitmap = BitmapFactory.decodeResource(resources, templateResource, decodeOptions)
+            canvasView.invalidate()
+        } catch (e: OutOfMemoryError) {
+            Log.e("SkinMakerFragment", "OutOfMemoryError loading template, trying with higher compression", e)
+            // Try again with much higher sample size (4x downscaling)
+            try {
+                val fallbackOptions = BitmapFactory.Options().apply {
+                    inJustDecodeBounds = false
+                    inSampleSize = 4 // Aggressive downsampling
+                    inScaled = false
+                }
+                canvasView.baseBitmap = BitmapFactory.decodeResource(resources, templateResource, fallbackOptions)
+                canvasView.originalBitmap = canvasView.baseBitmap // Use same for export
+                canvasView.invalidate()
+                if (isAdded && context != null) {
+                    Toast.makeText(requireContext(), "Loaded in low-res mode due to memory constraints", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e2: OutOfMemoryError) {
+                Log.e("SkinMakerFragment", "Still OOM with fallback", e2)
+                if (isAdded && context != null) {
+                    Toast.makeText(requireContext(), "Not enough memory to load template", Toast.LENGTH_LONG).show()
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("SkinMakerFragment", "Error loading template", e)
+            if (isAdded && context != null) {
+                Toast.makeText(requireContext(), "Failed to load template: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun setupListeners() {
@@ -376,7 +400,7 @@ class SkinMakerFragment : Fragment() {
     }
     
     private fun showTruckSelectionDialog() {
-        val dialog = TruckSelectionDialog { selectedTruck ->
+        val dialog = TruckSelectionDialog.newInstance { selectedTruck ->
             loadTruck(selectedTruck)
         }
         dialog.show(childFragmentManager, "TruckSelection")
@@ -392,7 +416,7 @@ class SkinMakerFragment : Fragment() {
     }
 
     private fun showStickerPicker() {
-        val bottomSheet = StickerBottomSheet(
+        val bottomSheet = StickerBottomSheet.newInstance(
             onLocalStickerSelected = { stickerRes ->
                 if (stickerRes == R.drawable.ic_upload) {
                     pickImageLauncher.launch("image/*")
@@ -418,7 +442,7 @@ class SkinMakerFragment : Fragment() {
     }
 
     private fun showLayersDialog() {
-        val dialog = LayersDialog(
+        val dialog = LayersDialog.newInstance(
             layers = canvasView.elements.toList(),
             onLayerSelected = { layer ->
                 canvasView.elements.forEach { it.isSelected = false }

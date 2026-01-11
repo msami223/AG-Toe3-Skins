@@ -34,21 +34,20 @@ class SkinsAdapter(
     override fun onBindViewHolder(holder: SkinViewHolder, position: Int) {
         val skin = skins[position]
 
-        // Set Text Data
-        holder.tvTruckModel.text = skin.acf.truckModel
-        holder.tvTitle.text = skin.title.rendered
-        holder.tvCreator.text = "By ${skin.acf.creatorName}"
+        // Set Text Data with null safety
+        holder.tvTruckModel.text = skin.acf.truckModel ?: "Unknown"
+        holder.tvTitle.text = skin.title.rendered ?: "Untitled"
+        holder.tvCreator.text = "By ${skin.acf.creatorName ?: "Unknown"}"
         holder.tvDownloads.text = "⬇ ${skin.acf.downloadCount}"
         holder.tvViews.text = "👁 ${skin.acf.viewCount}"
         holder.tvLikes.text = "❤ ${skin.acf.likeCount}"
 
-        // Load Image using Glide
-        // We check if previewImage1 is not empty, otherwise we don't load
-        if (skin.acf.previewImage1.isNotEmpty()) {
+        // Load Image using Glide with null safety
+        val imageUrl = skin.acf.previewImage1
+        if (!imageUrl.isNullOrEmpty()) {
             Glide.with(holder.itemView.context)
-                .load(skin.acf.previewImage1)
+                .load(imageUrl)
                 .centerCrop()
-
                 .into(holder.ivPreview)
         }
 
