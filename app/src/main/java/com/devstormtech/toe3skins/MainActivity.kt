@@ -20,11 +20,10 @@ import com.google.android.play.core.install.model.UpdateAvailability
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var homeFragment: HomeFragment
-
-    private lateinit var skinMakerFragment: SkinMakerFragment
-    private lateinit var settingsFragment: SettingsFragment
-    private lateinit var myProjectsFragment: MyProjectsFragment
+    private var homeFragment: HomeFragment? = null
+    private var skinMakerFragment: SkinMakerFragment? = null
+    private var settingsFragment: SettingsFragment? = null
+    private var myProjectsFragment: MyProjectsFragment? = null
 
     // In-App Update
     private lateinit var appUpdateManager: AppUpdateManager
@@ -51,53 +50,21 @@ class MainActivity : AppCompatActivity() {
             myProjectsFragment = MyProjectsFragment()
             
             supportFragmentManager.beginTransaction()
-                .add(R.id.fragment_container, homeFragment, "home")
-                .add(R.id.fragment_container, skinMakerFragment, "skin_maker")
-                .add(R.id.fragment_container, settingsFragment, "settings")
-                .add(R.id.fragment_container, myProjectsFragment, "my_projects")
-                .hide(skinMakerFragment)
-                .hide(settingsFragment)
-                .hide(myProjectsFragment)
+                .add(R.id.fragment_container, homeFragment!!, "home")
+                .add(R.id.fragment_container, skinMakerFragment!!, "skin_maker")
+                .add(R.id.fragment_container, settingsFragment!!, "settings")
+                .add(R.id.fragment_container, myProjectsFragment!!, "my_projects")
+                .hide(skinMakerFragment!!)
+                .hide(settingsFragment!!)
+                .hide(myProjectsFragment!!)
                 .commitNow()
         } else {
-            // Restore fragments from fragment manager after activity recreation (e.g., theme change)
-            val existingHome = supportFragmentManager.findFragmentByTag("home") as? HomeFragment
-            val existingSkinMaker = supportFragmentManager.findFragmentByTag("skin_maker") as? SkinMakerFragment
-            val existingSettings = supportFragmentManager.findFragmentByTag("settings") as? SettingsFragment
-            val existingMyProjects = supportFragmentManager.findFragmentByTag("my_projects") as? MyProjectsFragment
-            
-            if (existingHome != null && existingSkinMaker != null && existingSettings != null && existingMyProjects != null) {
-                // All fragments found, use them
-                homeFragment = existingHome
-                skinMakerFragment = existingSkinMaker
-                settingsFragment = existingSettings
-                myProjectsFragment = existingMyProjects
-            } else {
-                // Fragments not found (can happen during rapid theme switching), recreate them
-                homeFragment = existingHome ?: HomeFragment()
-                skinMakerFragment = existingSkinMaker ?: SkinMakerFragment()
-                settingsFragment = existingSettings ?: SettingsFragment()
-                myProjectsFragment = existingMyProjects ?: MyProjectsFragment()
-                
-                // Re-add any missing fragments
-                val transaction = supportFragmentManager.beginTransaction()
-                if (existingHome == null) {
-                    transaction.add(R.id.fragment_container, homeFragment, "home")
-                }
-                if (existingSkinMaker == null) {
-                    transaction.add(R.id.fragment_container, skinMakerFragment, "skin_maker")
-                    transaction.hide(skinMakerFragment)
-                }
-                if (existingSettings == null) {
-                    transaction.add(R.id.fragment_container, settingsFragment, "settings")
-                    transaction.hide(settingsFragment)
-                }
-                if (existingMyProjects == null) {
-                    transaction.add(R.id.fragment_container, myProjectsFragment, "my_projects")
-                    transaction.hide(myProjectsFragment)
-                }
-                transaction.commitNow()
-            }
+            // Activity recreated - fragments are automatically restored by FragmentManager
+            // Just get references to the existing fragments
+            homeFragment = supportFragmentManager.findFragmentByTag("home") as? HomeFragment
+            skinMakerFragment = supportFragmentManager.findFragmentByTag("skin_maker") as? SkinMakerFragment
+            settingsFragment = supportFragmentManager.findFragmentByTag("settings") as? SettingsFragment
+            myProjectsFragment = supportFragmentManager.findFragmentByTag("my_projects") as? MyProjectsFragment
         }
 
 
@@ -221,11 +188,11 @@ class MainActivity : AppCompatActivity() {
             intent.removeExtra("TARGET_TAB")
             
             // Apply the filter to HomeFragment
-            homeFragment.setInitialFilter(targetTab)
+            homeFragment?.setInitialFilter(targetTab)
             
             // Ensure we're on the home tab
             val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_navigation)
-            bottomNav.selectedItemId = R.id.nav_home
+            bottomNav?.selectedItemId = R.id.nav_home
         }
     }
 
@@ -243,7 +210,7 @@ class MainActivity : AppCompatActivity() {
             val imagePath = intent.getStringExtra("IMAGE_PATH")
             val truckName = intent.getStringExtra("TRUCK_MODEL_NAME")
             
-            if (imagePath != null && truckName != null) {
+            if (imagePath != null && truckName != null && skinMakerFragment != null) {
                 // Find Truck by Name (simple check for now)
                 val truck = TruckModel.getAllTrucks().find { 
                     it.displayName.equals(truckName, ignoreCase = true) || 
@@ -255,13 +222,13 @@ class MainActivity : AppCompatActivity() {
                 prefs.edit().putBoolean(KEY_SKIN_EDITOR_ACTIVATED, true).apply()
                 
                 val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_navigation)
-                bottomNav.menu.findItem(R.id.nav_skin_maker).isVisible = true
+                bottomNav?.menu?.findItem(R.id.nav_skin_maker)?.isVisible = true
                 
                 // Load into Fragment FIRST so isProjectLoaded() returns true
-                skinMakerFragment.loadSkinForEditing(truck, imagePath)
+                skinMakerFragment?.loadSkinForEditing(truck, imagePath)
                 
                 // Switch Tab (now isProjectLoaded will be true)
-                bottomNav.selectedItemId = R.id.nav_skin_maker
+                bottomNav?.selectedItemId = R.id.nav_skin_maker
                 
                 // Clear action so it doesn't run again on rotate
                 intent.action = ""
@@ -281,33 +248,37 @@ class MainActivity : AppCompatActivity() {
             // FIX: Wrap in try-catch to prevent crashes during rapid state changes
             try {
                 // Check if fragments are initialized and attached before proceeding
-                if (!::homeFragment.isInitialized || !::skinMakerFragment.isInitialized || 
-                    !::settingsFragment.isInitialized || !::myProjectsFragment.isInitialized) {
+                val home = homeFragment
+                val skinMaker = skinMakerFragment
+                val settings = settingsFragment
+                val myProjects = myProjectsFragment
+                
+                if (home == null || skinMaker == null || settings == null || myProjects == null) {
                     Log.w("MainActivity", "Fragments not yet initialized")
                     return@setOnItemSelectedListener false
                 }
                 
-                if (!homeFragment.isAdded || !skinMakerFragment.isAdded || !settingsFragment.isAdded) {
+                if (!home.isAdded || !skinMaker.isAdded || !settings.isAdded || !myProjects.isAdded) {
                     return@setOnItemSelectedListener false
                 }
                 
                 val transaction = supportFragmentManager.beginTransaction()
                 
                 // Hide all fragments first
-                transaction.hide(homeFragment)
-                transaction.hide(skinMakerFragment)
-                transaction.hide(settingsFragment)
-                transaction.hide(myProjectsFragment)
+                transaction.hide(home)
+                transaction.hide(skinMaker)
+                transaction.hide(settings)
+                transaction.hide(myProjects)
                 
                 when (item.itemId) {
                     R.id.nav_home -> {
-                        transaction.show(homeFragment)
+                        transaction.show(home)
                         transaction.commitNowAllowingStateLoss()
                         true
                     }
                     R.id.nav_skin_maker -> {
-                        if (skinMakerFragment.isProjectLoaded()) {
-                            transaction.show(skinMakerFragment)
+                        if (skinMaker.isProjectLoaded()) {
+                            transaction.show(skinMaker)
                             transaction.commitNowAllowingStateLoss()
                             true
                         } else {
@@ -317,12 +288,12 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                     R.id.nav_settings -> {
-                        transaction.show(settingsFragment)
+                        transaction.show(settings)
                         transaction.commitNowAllowingStateLoss()
                         true
                     }
                     R.id.nav_my_projects -> {
-                        transaction.show(myProjectsFragment)
+                        transaction.show(myProjects)
                         transaction.commitNowAllowingStateLoss()
                         true
                     }
@@ -348,20 +319,20 @@ class MainActivity : AppCompatActivity() {
             
             // Show the skin editor tab in bottom navigation
             val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_navigation)
-            bottomNav.menu.findItem(R.id.nav_skin_maker).isVisible = true
+            bottomNav?.menu?.findItem(R.id.nav_skin_maker)?.isVisible = true
             
             // Load the truck and switch to skin maker tab
-            skinMakerFragment.loadTruck(selectedTruck)
+            skinMakerFragment?.loadTruck(selectedTruck)
             
             // Now programmatically select the tab, which will trigger the listener again
             // prompting the "isProjectLoaded" check which will now be True
-            bottomNav.selectedItemId = R.id.nav_skin_maker
+            bottomNav?.selectedItemId = R.id.nav_skin_maker
         }
         dialog.show(supportFragmentManager, "TruckSelection")
     }
     
     private fun setupProjectLoading() {
-        myProjectsFragment.onProjectSelected = { projectId ->
+        myProjectsFragment?.onProjectSelected = { projectId ->
             val projectManager = ProjectManager(this)
             val (truck, state, name) = projectManager.loadProject(projectId)
             
@@ -376,14 +347,14 @@ class MainActivity : AppCompatActivity() {
                 val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 if (!prefs.getBoolean(KEY_SKIN_EDITOR_ACTIVATED, false)) {
                      prefs.edit().putBoolean(KEY_SKIN_EDITOR_ACTIVATED, true).apply()
-                     bottomNav.menu.findItem(R.id.nav_skin_maker).isVisible = true
+                     bottomNav?.menu?.findItem(R.id.nav_skin_maker)?.isVisible = true
                 }
 
                 // Load Project
-                skinMakerFragment.loadProject(truck, state, projectId, name)
+                skinMakerFragment?.loadProject(truck, state, projectId, name)
                 
                 // Switch Tab
-                bottomNav.selectedItemId = R.id.nav_skin_maker
+                bottomNav?.selectedItemId = R.id.nav_skin_maker
                 
             } else {
                 android.widget.Toast.makeText(this, "Failed to load project", android.widget.Toast.LENGTH_SHORT).show()
