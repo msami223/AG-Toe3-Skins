@@ -68,6 +68,12 @@ object AdManager {
      * AFTER consent has been gathered
      */
     fun initialize(context: Context) {
+        // Skip ad initialization entirely for internal builds (no ads)
+        if (!BuildConfig.ADS_ENABLED) {
+            Log.d(TAG, "Ads disabled for this build variant, skipping initialization")
+            return
+        }
+        
         if (isInitialized) {
             Log.d(TAG, "AdManager already initialized, skipping")
             return
@@ -311,6 +317,9 @@ object AdManager {
      * No cooldowns or action counts - immediate display.
      */
     fun onUserAction(activity: Activity) {
+        // Skip if ads are disabled for this build
+        if (!BuildConfig.ADS_ENABLED) return
+        
         Log.d(TAG, "User action triggered, attempting to show interstitial...")
         
         if (showInterstitialAd(activity)) {

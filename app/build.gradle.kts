@@ -13,8 +13,8 @@ android {
         applicationId = "com.devstormtech.toe3skins"
         minSdk = 24
         targetSdk = 35
-        versionCode = 14
-        versionName = "1.13"
+        versionCode = 15
+        versionName = "1.14"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -25,6 +25,22 @@ android {
             storePassword = "Sami223@!"
             keyAlias = "toe3skins"
             keyPassword = "Sami223@!"
+        }
+    }
+    
+    // Product flavors: internal (no ads) and production (with ads)
+    flavorDimensions += "version"
+    productFlavors {
+        create("internal") {
+            dimension = "version"
+            // Note: Same package name as production so google-services.json works
+            // Differentiate only by BuildConfig.ADS_ENABLED flag
+            versionNameSuffix = "-internal"
+            buildConfigField("boolean", "ADS_ENABLED", "false")
+        }
+        create("production") {
+            dimension = "version"
+            buildConfigField("boolean", "ADS_ENABLED", "true")
         }
     }
 

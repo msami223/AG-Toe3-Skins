@@ -39,41 +39,28 @@ class MainActivity : AppCompatActivity() {
         val savedTheme = prefs.getInt(KEY_THEME, AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
         AppCompatDelegate.setDefaultNightMode(savedTheme)
 
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-
-        if (savedInstanceState == null) {
-            // Fresh start: create new fragments
-            homeFragment = HomeFragment()
-            skinMakerFragment = SkinMakerFragment()
-            settingsFragment = SettingsFragment()
-            myProjectsFragment = MyProjectsFragment()
-            
-            supportFragmentManager.beginTransaction()
-                .add(R.id.fragment_container, homeFragment!!, "home")
-                .add(R.id.fragment_container, skinMakerFragment!!, "skin_maker")
-                .add(R.id.fragment_container, settingsFragment!!, "settings")
-                .add(R.id.fragment_container, myProjectsFragment!!, "my_projects")
-                .hide(skinMakerFragment!!)
-                .hide(settingsFragment!!)
-                .hide(myProjectsFragment!!)
-                .commitNow()
-        } else {
-            // Activity recreated - fragments are automatically restored by FragmentManager
-            // Just get references to the existing fragments
-            homeFragment = supportFragmentManager.findFragmentByTag("home") as? HomeFragment
-            skinMakerFragment = supportFragmentManager.findFragmentByTag("skin_maker") as? SkinMakerFragment
-            settingsFragment = supportFragmentManager.findFragmentByTag("settings") as? SettingsFragment
-            myProjectsFragment = supportFragmentManager.findFragmentByTag("my_projects") as? MyProjectsFragment
+        // CRITICAL FIX: Clear saved fragment state to prevent FragmentManager from trying
+        // to restore fragments BEFORE setContentView() is called.
+        // This prevents "No view found for id fragment_container" crash during activity recreation.
+        val cleanedSavedInstanceState = savedInstanceState?.let { bundle ->
+            Bundle(bundle).apply {
+                // Remove the fragment state keys to prevent automatic restoration
+                remove("android:support:fragments")
+                remove("androidx.lifecycle.BundlableSavedStateRegistry.key")
+            }
         }
 
+        super.onCreate(cleanedSavedInstanceState)
+        setContentView(R.layout.activity_main)
 
+        // Always create fresh fragment instances after setContentView
+        // This ensures the fragment_container view exists when fragments are added
+        initializeFragments()
 
         // Initialize In-App Update Manager
         appUpdateManager = AppUpdateManagerFactory.create(this)
         checkForUpdate()
 
-        // Initialize AdManager
         // Initialize AdManager - Moved to ConsentManager callback below
         
         // Initialize Analytics
@@ -110,6 +97,46 @@ class MainActivity : AppCompatActivity() {
         handleNavigationIntent(intent)
         handleEditSkinIntent(intent)
     }
+    
+    /**
+     * Initialize all fragments safely after setContentView has been called.
+     * This ensures the fragment_container view exists before any fragments are added.
+     */
+    private fun initializeFragments() {
+        // Check if fragments already exist (shouldn't happen with our fix, but be safe)
+        val existingHome = supportFragmentManager.findFragmentByTag("home")
+        val existingSkinMaker = supportFragmentManager.findFragmentByTag("skin_maker")
+        val existingSettings = supportFragmentManager.findFragmentByTag("settings")
+        val existingMyProjects = supportFragmentManager.findFragmentByTag("my_projects")
+        
+        // If any fragment exists, remove them all and start fresh
+        if (existingHome != null || existingSkinMaker != null || existingSettings != null || existingMyProjects != null) {
+            supportFragmentManager.beginTransaction().apply {
+                existingHome?.let { remove(it) }
+                existingSkinMaker?.let { remove(it) }
+                existingSettings?.let { remove(it) }
+                existingMyProjects?.let { remove(it) }
+            }.commitNowAllowingStateLoss()
+        }
+        
+        // Create fresh fragment instances
+        homeFragment = HomeFragment()
+        skinMakerFragment = SkinMakerFragment()
+        settingsFragment = SettingsFragment()
+        myProjectsFragment = MyProjectsFragment()
+        
+        // Add all fragments to the container
+        supportFragmentManager.beginTransaction()
+            .add(R.id.fragment_container, homeFragment!!, "home")
+            .add(R.id.fragment_container, skinMakerFragment!!, "skin_maker")
+            .add(R.id.fragment_container, settingsFragment!!, "settings")
+            .add(R.id.fragment_container, myProjectsFragment!!, "my_projects")
+            .hide(skinMakerFragment!!)
+            .hide(settingsFragment!!)
+            .hide(myProjectsFragment!!)
+            .commitNowAllowingStateLoss()
+    }
+
 
     private fun checkForUpdate() {
         val appUpdateInfoTask = appUpdateManager.appUpdateInfo

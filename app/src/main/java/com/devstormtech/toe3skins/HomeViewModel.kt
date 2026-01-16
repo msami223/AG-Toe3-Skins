@@ -33,28 +33,54 @@ class HomeViewModel : ViewModel() {
     fun fetchSkins(refresh: Boolean = false) {
         _isLoading.value = !refresh // Only show full loading if not pull-to-refresh
         _errorMessage.value = null
-
-        RetrofitClient.instance.getSkins().enqueue(object : Callback<List<Skin>> {
+        
+        // Fetch all pages recursively
+        fetchAllSkinsPages(page = 1, accumulated = mutableListOf())
+    }
+    
+    private fun fetchAllSkinsPages(page: Int, accumulated: MutableList<Skin>) {
+        RetrofitClient.instance.getSkins(page).enqueue(object : Callback<List<Skin>> {
             override fun onResponse(call: Call<List<Skin>>, response: Response<List<Skin>>) {
-                _isLoading.value = false
                 if (response.isSuccessful && response.body() != null) {
-                    val skinsList = response.body() ?: return
-                    if (skinsList.isNotEmpty()) {
-                        allSkinsCache = skinsList
-                        applyFilters()
+                    val skinsList = response.body() ?: emptyList()
+                    accumulated.addAll(skinsList)
+                    
+                    // If we got 100 skins, there might be more pages
+                    if (skinsList.size >= 100) {
+                        // Fetch next page
+                        fetchAllSkinsPages(page + 1, accumulated)
                     } else {
-                        // Empty list from server
-                        _skins.value = emptyList()
-                        _errorMessage.value = "We are working hard on adding new skins! Check back soon."
+                        // Done fetching all pages
+                        _isLoading.value = false
+                        if (accumulated.isNotEmpty()) {
+                            allSkinsCache = accumulated
+                            applyFilters()
+                        } else {
+                            _skins.value = emptyList()
+                            _errorMessage.value = "We are working hard on adding new skins! Check back soon."
+                        }
                     }
                 } else {
-                    _errorMessage.value = "Server Error: ${response.code()}"
+                    _isLoading.value = false
+                    // If this is not the first page and we got an error, use what we have
+                    if (page > 1 && accumulated.isNotEmpty()) {
+                        allSkinsCache = accumulated
+                        applyFilters()
+                    } else {
+                        _errorMessage.value = "Server Error: ${response.code()}"
+                    }
                 }
             }
 
             override fun onFailure(call: Call<List<Skin>>, t: Throwable) {
                 _isLoading.value = false
-                _errorMessage.value = "Network Error: ${t.message}"
+                // If this is not the first page and we have some data, use it
+                if (page > 1 && accumulated.isNotEmpty()) {
+                    allSkinsCache = accumulated
+                    applyFilters()
+                } else {
+                    _errorMessage.value = "Network Error: ${t.message}"
+                }
             }
         })
     }

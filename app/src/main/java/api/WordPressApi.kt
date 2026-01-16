@@ -6,11 +6,12 @@ import retrofit2.Call
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface WordPressApi {
-    // Get all skins
+    // Get skins with pagination support
     @GET("wp-json/wp/v2/skins?per_page=100")
-    fun getSkins(): Call<List<Skin>>
+    fun getSkins(@Query("page") page: Int = 1): Call<List<Skin>>
 
     // Get all stickers with embedded featured images
     @GET("wp-json/wp/v2/stickers?_embed&per_page=100")
